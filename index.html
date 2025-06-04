@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Card Spinner Thingy</title>
+    <style>
+      body { margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center;  }
+      canvas { display: block; }
+      #upload-container {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px;
+        border-radius: 8px;
+      }
+    </style>
+    <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
+  </head>
+  <body>
+    <div id="upload-container">
+  <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
+  <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
+  <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
+  <button id="submitBtn">Submit</button>
+</div>
+<button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
+<script>
+document.getElementById('bgInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    document.body.style.backgroundImage = `url('${event.target.result}')`;
+    document.body.style.backgroundSize = 'contain';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    document.body.style.backgroundAttachment = 'fixed';
+  };
+  reader.readAsDataURL(file);
+});
+</script>
+<script>
+document.getElementById('submitBtn').addEventListener('click', () => {
+  document.getElementById('upload-container').style.display = 'none';
+  document.getElementById('exportBtn').style.display = 'block';
+});
+      let frontTexture, backTexture, cardMesh;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
+
+      camera.position.set(0, 2, 8);
+      camera.lookAt(0, 0, 0);
+
+      scene.add(new THREE.AmbientLight(0x404040, 1.5));
+
+      const spotlight = new THREE.SpotLight(0xffffff, 1);
+      spotlight.position.set(0, 10, 5);
+      spotlight.castShadow = true;
+      spotlight.angle = Math.PI / 6;
+      spotlight.penumbra = 0.3;
+      spotlight.shadow.mapSize.width = 1024;
+      spotlight.shadow.mapSize.height = 1024;
+      scene.add(spotlight);
+
+      
+
+      function createMaterialWithTextures(frontTex, backTex) {
+        const materials = [];
+        const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        for (let i = 0; i < 6; i++) {
+          if (i === 4) {
+            materials.push(new THREE.MeshStandardMaterial({ map: frontTex }));
+          } else if (i === 5) {
+            materials.push(new THREE.MeshStandardMaterial({ map: backTex }));
+          } else {
+            materials.push(defaultEdge);
+          }
+        }
+        return materials;
+      }
+
+      function createCard() {
+        if (!frontTexture || !backTexture) return;
+        if (cardMesh) scene.remove(cardMesh);
+
+        const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
+        const materials = createMaterialWithTextures(frontTexture, backTexture);
+
+        cardMesh = new THREE.Mesh(geometry, materials);
+        cardMesh.scale.set(0.9, 0.9, 0.9);
+        cardMesh.castShadow = true;
+        cardMesh.receiveShadow = false;
+        cardMesh.position.y = 0.3;
+        scene.add(cardMesh);
+
+        
+      }
+
+      function handleFile(input, callback) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const loader = new THREE.TextureLoader();
+          loader.load(event.target.result, texture => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            callback(texture);
+            if (frontTexture && backTexture) createCard();
+          });
+        };
+        reader.readAsDataURL(file);
+      }
+
+      document.getElementById('frontInput').addEventListener('change', e => {
+        handleFile(e.target, texture => (frontTexture = texture));
+      });
+      document.getElementById('backInput').addEventListener('change', e => {
+        handleFile(e.target, texture => (backTexture = texture));
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        if (cardMesh) cardMesh.rotation.y += 0.0085;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    document.getElementById('exportBtn').addEventListener('click', () => {
+  const gifLength = 60; // ~2 seconds at 30fps
+  const canvas = renderer.domElement;
+  const gif = new GIF({
+    workers: 2,
+    quality: 10,
+    width: canvas.width,
+    height: canvas.height,
+    workerScript: 'https://unpkg.com/gif.js.optimized/dist/gif.worker.js'
+  });
+  let frame = 0;
+  const interval = setInterval(() => {
+    renderer.render(scene, camera);
+    gif.addFrame(canvas, { copy: true, delay: 33 });
+    frame++;
+    if (frame >= gifLength) {
+      clearInterval(interval);
+      gif.on('finished', blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'spinning_card.gif';
+        link.click();
+      });
+      gif.render();
+    }
+    if (cardMesh) cardMesh.rotation.y += 0.0085;
+  }, 33);
+});
+</script>
+<script src="https://unpkg.com/gif.js.optimized/dist/gif.js"></script>
+
+</body>
+</html>
