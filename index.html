@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Card Spinner Thingy</title>
+    <title>Spinning Pokémon Card</title>
     <style>
       body { margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center;  }
       canvas { display: block; }
@@ -32,14 +32,18 @@ document.getElementById('bgInput').addEventListener('change', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function (event) {
-    document.body.style.backgroundImage = `url('${event.target.result}')`;
-    document.body.style.backgroundSize = 'contain';
-    document.body.style.backgroundPosition = 'center';
-    document.body.style.backgroundRepeat = 'no-repeat';
-    document.body.style.backgroundAttachment = 'fixed';
+    setBackground(event.target.result);
   };
   reader.readAsDataURL(file);
 });
+
+function setBackground(imageUrl) {
+  document.body.style.backgroundImage = `url('${imageUrl}')`;
+  document.body.style.backgroundSize = 'contain';
+  document.body.style.backgroundPosition = 'center';
+  document.body.style.backgroundRepeat = 'no-repeat';
+  document.body.style.backgroundAttachment = 'fixed';
+}
 </script>
 <script>
 document.getElementById('submitBtn').addEventListener('click', () => {
@@ -133,6 +137,20 @@ document.getElementById('submitBtn').addEventListener('click', () => {
         renderer.render(scene, camera);
       }
       animate();
+
+// Load default background and card images
+setBackground('dripbackground.png');
+const loader = new THREE.TextureLoader();
+loader.load('front.png', texture => {
+  texture.colorSpace = THREE.SRGBColorSpace;
+  frontTexture = texture;
+  if (frontTexture && backTexture) createCard();
+});
+loader.load('back.png', texture => {
+  texture.colorSpace = THREE.SRGBColorSpace;
+  backTexture = texture;
+  if (frontTexture && backTexture) createCard();
+});
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
