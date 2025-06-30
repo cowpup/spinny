@@ -98,6 +98,7 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
   <body>
     <div id="controls-container">
@@ -106,7 +107,7 @@
         <button id="downloadTemplateBtn" class="secondary-btn">Download CSV Template</button>
         <input type="file" id="csvInput" accept=".csv" />
         <p style="font-size: 12px; color: #666;">
-          CSV should have columns: name, front, back, background
+          CSV should have columns: name (cert number), front, back, background
         </p>
       </div>
 
@@ -286,10 +287,12 @@
             texture => {
               texture.colorSpace = THREE.SRGBColorSpace;
               
-              const aspectRatio = texture.image.width / texture.image.height;
-              const planeHeight = 12 * settings.bgScale;
-              const planeWidth = planeHeight * aspectRatio;
-              const bgGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+              // Keep original aspect ratio and size (2500x2500)
+              // Scale uniformly without distortion
+              const baseSize = 12; // Base size for 2500x2500
+              const scaledSize = baseSize * settings.bgScale;
+              
+              const bgGeometry = new THREE.PlaneGeometry(scaledSize, scaledSize);
               const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
               
               if (backgroundPlane) scene.remove(backgroundPlane);
@@ -329,10 +332,9 @@
 
       function exportVideo(filename) {
         return new Promise((resolve) => {
-          // Calculate actual duration for seamless loop
-          const actualDuration = calculateDuration();
-          const totalFrames = Math.round(actualDuration * settings.fps);
-          const rotationPerFrame = (settings.rotations * Math.PI * 2) / totalFrames;
+          // Calculate frames needed for exact rotations
+          const totalFrames = Math.round((settings.rotations * Math.PI * 2) / Math.abs(settings.rotationSpeed));
+          const rotationPerFrame = settings.rotationSpeed; // Use actual rotation speed per frame
 
           // Create canvas for recording
           const canvas = renderer.domElement;
@@ -341,7 +343,7 @@
           tempCanvas.height = canvas.height;
           const tempContext = tempCanvas.getContext('2d');
 
-          // Use MediaRecorder with WebM, we'll handle MP4 conversion differently
+          // Use MediaRecorder with WebM
           const stream = tempCanvas.captureStream(settings.fps);
           const recorder = new MediaRecorder(stream, { 
             mimeType: 'video/webm;codecs=vp8',
@@ -352,8 +354,6 @@
           recorder.ondataavailable = e => chunks.push(e.data);
           recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
-            // Store as MP4 filename but keep webm blob for now
-            // Note: True MP4 conversion would require additional libraries
             processedVideos.push({ filename: filename + '.mp4', blob });
             resolve();
           };
@@ -367,7 +367,7 @@
           const captureInterval = setInterval(() => {
             if (!cardMesh) return;
             
-            // Rotate card
+            // Rotate card using the actual rotation speed
             cardMesh.rotation.y += rotationPerFrame;
             
             // Render to main canvas
@@ -389,16 +389,15 @@
       // CSV template download
       document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
         const templateData = [
-          ['name', 'front', 'back', 'background'],
-          ['example_card_1', 'https://example.com/front1.jpg', 'https://example.com/back1.jpg', 'https://example.com/bg1.jpg'],
-          ['example_card_2', 'https://example.com/front2.jpg', 'https://example.com/back2.jpg', 'https://example.com/bg2.jpg']
+          ['name (cert number)', 'front', 'back', 'background'],
+          ['example_card_1', 'https://example.com/front1.jpg', 'https://example.com/back1.jpg', 'https://res.cloudinary.com/dfewtifoz/image/upload/v1751256483/dripslabbackground_fnq8te.png'],
+          ['example_card_2', 'https://example.com/front2.jpg', 'https://example.com/back2.jpg', 'https://res.cloudinary.com/dfewtifoz/image/upload/v1751256483/dripslabbackground_fnq8te.png']
         ];
         
         const csvContent = templateData.map(row => row.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
         a.download = 'card_animation_template.csv';
         a.click();
         URL.revokeObjectURL(url);
@@ -505,17 +504,26 @@
         document.getElementById('downloadAllBtn').classList.remove('hidden');
       });
 
-      // Download all videos
-      document.getElementById('downloadAllBtn').addEventListener('click', () => {
+      // Download all videos as ZIP
+      document.getElementById('downloadAllBtn').addEventListener('click', async () => {
+        const zip = new JSZip();
+        
+        // Add each video to the ZIP
         processedVideos.forEach(video => {
-          const url = URL.createObjectURL(video.blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = video.filename;
-          a.click();
-          URL.revokeObjectURL(url);
+          zip.file(video.filename, video.blob);
         });
+        
+        // Generate ZIP file
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'card_animations.zip';
+        a.click();
+        URL.revokeObjectURL(url);
       });
+
+      // Remove the old createZipFile function since we're using JSZip now
 
       // Animation loop
       function animate() {
