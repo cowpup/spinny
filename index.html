@@ -70,7 +70,7 @@
     </div>
     <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
     <script>
-      let frontTexture, backTexture, cardMesh;
+      let frontTexture, backTexture, cardMesh, backgroundPlane;
       let rotationSpeed = 0.0085;
       let scaleValue = 0.9;
       let cardX = 0, cardY = 0.3, pitch = 0;
@@ -142,17 +142,18 @@
       }
 
       function setBackground(imageUrl) {
-        document.body.style.backgroundImage = `url('${imageUrl}')`;
-        document.body.style.backgroundSize = 'contain';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundRepeat = 'no-repeat';
-        document.body.style.backgroundAttachment = 'fixed';
-      }
+  const loader = new THREE.TextureLoader();
+  loader.load(imageUrl, texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
 
-      document.getElementById('frontInput').addEventListener('change', e => {
-        handleFile(e.target, texture => {
-          frontTexture = texture;
-          createCard();
+    const bgGeometry = new THREE.PlaneGeometry(20, 20);
+    const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
+    if (backgroundPlane) scene.remove(backgroundPlane);
+    backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
+    backgroundPlane.position.set(0, 0, -5);
+    scene.add(backgroundPlane);
+  });
+}
         });
       });
       document.getElementById('backInput').addEventListener('change', e => {
