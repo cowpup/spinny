@@ -1,147 +1,538 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Spinning Pokémon Card</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: black;
-    }
-    canvas {
-      display: block;
-    }
-    #upload-container {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 10px;
-      border-radius: 8px;
-    }
-    .slider-container {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      margin: 5px 0;
-    }
-    .slider-container input[type=number] {
-      width: 50px;
-    }
-  </style>
-  <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-</head>
-<body>
-  <div id="upload-container">
-    <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
-    <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
-    <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
-    <label>CSV File: <input type="file" id="csvInput" accept=".csv"></label><br>
-    <div class="slider-container">
-      <label for="adjustX">Adjust Horizontal (X):</label>
-      <input type="range" id="adjustX" min="-5" max="5" step="0.1">
-      <input type="number" id="adjustXVal">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Batch Spinning Pokémon Card Animator</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #controls-container {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        border-radius: 8px;
+        max-width: 350px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      #status-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      }
+      .section {
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .section h3 {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+      .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 8px 0;
+      }
+      .slider-container label {
+        min-width: 120px;
+        font-size: 12px;
+      }
+      .slider-container input[type=range] {
+        flex: 1;
+      }
+      .slider-container input[type=number] {
+        width: 60px;
+      }
+      button {
+        padding: 8px 16px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .primary-btn {
+        background: #007bff;
+        color: white;
+      }
+      .primary-btn:hover {
+        background: #0056b3;
+      }
+      .secondary-btn {
+        background: #6c757d;
+        color: white;
+      }
+      .secondary-btn:hover {
+        background: #545b62;
+      }
+      #progress {
+        width: 200px;
+        height: 20px;
+        margin: 10px 0;
+      }
+      .hidden {
+        display: none;
+      }
+      input[type="file"] {
+        margin: 5px 0;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+  </head>
+  <body>
+    <div id="controls-container">
+      <div class="section">
+        <h3>CSV Upload</h3>
+        <button id="downloadTemplateBtn" class="secondary-btn">Download CSV Template</button>
+        <input type="file" id="csvInput" accept=".csv" />
+        <p style="font-size: 12px; color: #666;">
+          CSV should have columns: name, front, back, background
+        </p>
+      </div>
+
+      <div class="section">
+        <h3>Card Settings</h3>
+        <div class="slider-container">
+          <label>Horizontal (X):</label>
+          <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0">
+          <input type="number" id="adjustXVal" value="0" step="0.1">
+        </div>
+        <div class="slider-container">
+          <label>Vertical (Y):</label>
+          <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3">
+          <input type="number" id="adjustYVal" value="0.3" step="0.1">
+        </div>
+        <div class="slider-container">
+          <label>Pitch (Z):</label>
+          <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0">
+          <input type="number" id="adjustPitchVal" value="0" step="0.05">
+        </div>
+        <div class="slider-container">
+          <label>Rotate Speed:</label>
+          <input type="range" id="rotationSpeed" min="-0.1" max="0.1" step="0.001" value="0.0085">
+          <input type="number" id="rotationSpeedVal" value="0.0085" step="0.001">
+        </div>
+        <div class="slider-container">
+          <label>Scale:</label>
+          <input type="range" id="scale" min="0.1" max="3" step="0.01" value="0.9">
+          <input type="number" id="scaleVal" value="0.9" step="0.01">
+        </div>
+        <div class="slider-container">
+          <label>Card Thickness:</label>
+          <input type="range" id="thickness" min="0.05" max="1" step="0.05" value="0.2">
+          <input type="number" id="thicknessVal" value="0.2" step="0.05">
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Background Settings</h3>
+        <div class="slider-container">
+          <label>Background Scale:</label>
+          <input type="range" id="bgScale" min="0.5" max="3" step="0.1" value="1">
+          <input type="number" id="bgScaleVal" value="1" step="0.1">
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Export Settings</h3>
+        <div class="slider-container">
+          <label>Rotations:</label>
+          <input type="range" id="rotations" min="0.25" max="5" step="0.25" value="1">
+          <input type="number" id="rotationsVal" value="1" step="0.25">
+        </div>
+        <div class="slider-container">
+          <label>FPS:</label>
+          <input type="range" id="fps" min="15" max="60" step="5" value="30">
+          <input type="number" id="fpsVal" value="30" step="5">
+        </div>
+        <div id="calculatedDuration" style="font-size: 12px; color: #666; margin-top: 5px;">
+          Duration: 0.0s (calculated automatically)
+        </div>
+      </div>
+
+      <button id="testBtn" class="secondary-btn">Test Current Settings</button>
+      <button id="processBtn" class="primary-btn hidden">Process All Rows</button>
     </div>
-    <div class="slider-container">
-      <label for="adjustY">Adjust Vertical (Y):</label>
-      <input type="range" id="adjustY" min="-5" max="5" step="0.1">
-      <input type="number" id="adjustYVal">
+
+    <div id="status-container">
+      <h3>Status</h3>
+      <div id="currentItem">No CSV loaded</div>
+      <progress id="progress" value="0" max="100" class="hidden"></progress>
+      <div id="progressText" class="hidden">0 / 0</div>
+      <button id="downloadAllBtn" class="primary-btn hidden">Download All Videos</button>
     </div>
-    <div class="slider-container">
-      <label for="adjustPitch">Adjust Pitch (Z):</label>
-      <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
-      <input type="number" id="adjustPitchVal">
-    </div>
-    <div class="slider-container">
-      <label for="rotationSpeed">Rotate Speed:</label>
-      <input type="range" id="rotationSpeed" min="0.001" max="0.05" step="0.001">
-      <input type="number" id="rotationSpeedVal">
-    </div>
-    <div class="slider-container">
-      <label for="scale">Scale:</label>
-      <input type="range" id="scale" min="0.1" max="2" step="0.01">
-      <input type="number" id="scaleVal">
-    </div>
-    <div class="slider-container">
-      <label for="bgScale">Background Scale:</label>
-      <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
-      <input type="number" id="bgScaleVal">
-    </div>
-    <div class="slider-container">
-      <label for="thickness">Card Thickness:</label>
-      <input type="range" id="thickness" min="0.001" max="0.1" step="0.001">
-      <input type="number" id="thicknessVal">
-    </div>
-    <button id="downloadTemplateBtn">Download Template CSV</button>
-    <button id="exportBtn">Export MP4</button>
-    <button id="batchExportBtn">Batch Export CSV</button>
-  </div>
 
-  <canvas id="threeCanvas"></canvas>
+    <script>
+      let frontTexture, backTexture, cardMesh, backgroundPlane;
+      let csvData = [];
+      let currentRowIndex = 0;
+      let isProcessing = false;
+      let processedVideos = [];
+      
+      // Settings
+      let settings = {
+        cardX: 0,
+        cardY: 0.3,
+        pitch: 0,
+        rotationSpeed: 0.0085,
+        scale: 0.9,
+        thickness: 0.2,
+        bgScale: 1,
+        rotations: 1,
+        fps: 30
+      };
 
-  <script>
-    async function exportOneRotationMP4(canvas, filename = 'rotation.mp4') {
-      const fps = 30;
-      const durationSec = 1 / parseFloat(document.getElementById('rotationSpeed').value || 0.0085) * 2 * Math.PI;
-      const frames = Math.round(fps * durationSec);
-      const stream = canvas.captureStream(fps);
-      const recorder = new MediaRecorder(stream);
-      const chunks = [];
+      // Calculate duration based on rotation speed and number of rotations
+      function calculateDuration() {
+        if (settings.rotationSpeed === 0) return 0;
+        return Math.abs((settings.rotations * Math.PI * 2) / settings.rotationSpeed) / settings.fps;
+      }
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
+      function updateDurationDisplay() {
+        const duration = calculateDuration();
+        document.getElementById('calculatedDuration').textContent = 
+          `Duration: ${duration.toFixed(2)}s (calculated automatically)`;
+      }
 
-      return new Promise(resolve => {
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/mp4' });
-          resolve(blob);
-        };
-        recorder.start();
-        setTimeout(() => recorder.stop(), (1000 * frames / fps));
-      });
-    }
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+      renderer.shadowMap.enabled = true;
+      document.body.appendChild(renderer.domElement);
 
-    document.getElementById('exportBtn').addEventListener('click', async () => {
-      const canvas = document.querySelector('canvas');
-      const blob = await exportOneRotationMP4(canvas);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'rotation.mp4';
-      a.click();
-    });
+      camera.position.set(0, 2, 8);
+      camera.lookAt(0, 0, 0);
 
-    document.getElementById('batchExportBtn').addEventListener('click', () => {
-      const fileInput = document.getElementById('csvInput');
-      if (!fileInput.files.length) return alert("Please upload a CSV first.");
+      scene.add(new THREE.AmbientLight(0x404040, 1.5));
 
-      Papa.parse(fileInput.files[0], {
-        header: true,
-        skipEmptyLines: true,
-        complete: async function(results) {
-          const rows = results.data;
-          const zip = new JSZip();
-          const canvas = document.querySelector('canvas');
+      const spotlight = new THREE.SpotLight(0xffffff, 1);
+      spotlight.position.set(0, 10, 5);
+      spotlight.castShadow = true;
+      spotlight.angle = Math.PI / 6;
+      spotlight.penumbra = 0.3;
+      spotlight.shadow.mapSize.width = 1024;
+      spotlight.shadow.mapSize.height = 1024;
+      scene.add(spotlight);
 
-          for (let row of rows) {
-            const filename = (row.Name || 'unnamed') + '.mp4';
-            const blob = await exportOneRotationMP4(canvas);
-            zip.file(filename, blob);
+      function createCard() {
+        if (cardMesh) scene.remove(cardMesh);
+
+        const geometry = new THREE.BoxGeometry(3.5, 5, settings.thickness);
+        const materials = [];
+        const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const blank = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+        for (let i = 0; i < 6; i++) {
+          if (i === 4) {
+            materials.push(frontTexture ? new THREE.MeshStandardMaterial({ map: frontTexture }) : blank);
+          } else if (i === 5) {
+            materials.push(backTexture ? new THREE.MeshStandardMaterial({ map: backTexture }) : blank);
+          } else {
+            materials.push(defaultEdge);
           }
+        }
 
-          const content = await zip.generateAsync({ type: 'blob' });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(content);
-          a.download = 'batch_export.zip';
-          a.click();
+        cardMesh = new THREE.Mesh(geometry, materials);
+        cardMesh.scale.set(settings.scale, settings.scale, settings.scale);
+        cardMesh.castShadow = true;
+        cardMesh.receiveShadow = false;
+        cardMesh.position.set(settings.cardX, settings.cardY, 0);
+        cardMesh.rotation.x = settings.pitch;
+        scene.add(cardMesh);
+      }
+
+      function loadTexture(url) {
+        return new Promise((resolve, reject) => {
+          const loader = new THREE.TextureLoader();
+          loader.load(
+            url,
+            texture => {
+              texture.colorSpace = THREE.SRGBColorSpace;
+              resolve(texture);
+            },
+            undefined,
+            error => reject(error)
+          );
+        });
+      }
+
+      function setBackground(imageUrl) {
+        return new Promise((resolve, reject) => {
+          const loader = new THREE.TextureLoader();
+          loader.load(
+            imageUrl,
+            texture => {
+              texture.colorSpace = THREE.SRGBColorSpace;
+              
+              const aspectRatio = texture.image.width / texture.image.height;
+              const planeHeight = 12 * settings.bgScale;
+              const planeWidth = planeHeight * aspectRatio;
+              const bgGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+              const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
+              
+              if (backgroundPlane) scene.remove(backgroundPlane);
+              backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
+              backgroundPlane.position.set(0, 0, -5);
+              scene.add(backgroundPlane);
+              resolve();
+            },
+            undefined,
+            error => reject(error)
+          );
+        });
+      }
+
+      async function loadRowData(rowData) {
+        try {
+          document.getElementById('currentItem').textContent = `Loading: ${rowData.name}`;
+          
+          // Load textures
+          frontTexture = await loadTexture(rowData.front);
+          backTexture = await loadTexture(rowData.back);
+          
+          // Set background
+          await setBackground(rowData.background);
+          
+          // Create card with current settings
+          createCard();
+          
+          document.getElementById('currentItem').textContent = `Loaded: ${rowData.name}`;
+          return true;
+        } catch (error) {
+          console.error('Error loading row data:', error);
+          document.getElementById('currentItem').textContent = `Error loading: ${rowData.name}`;
+          return false;
+        }
+      }
+
+      function exportVideo(filename) {
+        return new Promise((resolve) => {
+          // Calculate actual duration for seamless loop
+          const actualDuration = calculateDuration();
+          const totalFrames = Math.round(actualDuration * settings.fps);
+          const rotationPerFrame = (settings.rotations * Math.PI * 2) / totalFrames;
+
+          // Create canvas for recording
+          const canvas = renderer.domElement;
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = canvas.width;
+          tempCanvas.height = canvas.height;
+          const tempContext = tempCanvas.getContext('2d');
+
+          // Use MediaRecorder with WebM, we'll handle MP4 conversion differently
+          const stream = tempCanvas.captureStream(settings.fps);
+          const recorder = new MediaRecorder(stream, { 
+            mimeType: 'video/webm;codecs=vp8',
+            videoBitsPerSecond: 8000000 // 8 Mbps for good quality
+          });
+          const chunks = [];
+
+          recorder.ondataavailable = e => chunks.push(e.data);
+          recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            // Store as MP4 filename but keep webm blob for now
+            // Note: True MP4 conversion would require additional libraries
+            processedVideos.push({ filename: filename + '.mp4', blob });
+            resolve();
+          };
+
+          recorder.start();
+
+          let framesCaptured = 0;
+          // Reset card rotation for consistent starting point
+          if (cardMesh) cardMesh.rotation.y = 0;
+
+          const captureInterval = setInterval(() => {
+            if (!cardMesh) return;
+            
+            // Rotate card
+            cardMesh.rotation.y += rotationPerFrame;
+            
+            // Render to main canvas
+            renderer.render(scene, camera);
+            
+            // Copy to recording canvas
+            tempContext.drawImage(canvas, 0, 0);
+            
+            framesCaptured++;
+            
+            if (framesCaptured >= totalFrames) {
+              clearInterval(captureInterval);
+              recorder.stop();
+            }
+          }, 1000 / settings.fps);
+        });
+      }
+
+      // CSV template download
+      document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+        const templateData = [
+          ['name', 'front', 'back', 'background'],
+          ['example_card_1', 'https://example.com/front1.jpg', 'https://example.com/back1.jpg', 'https://example.com/bg1.jpg'],
+          ['example_card_2', 'https://example.com/front2.jpg', 'https://example.com/back2.jpg', 'https://example.com/bg2.jpg']
+        ];
+        
+        const csvContent = templateData.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'card_animation_template.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      // CSV handling
+      document.getElementById('csvInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            csvData = results.data;
+            document.getElementById('currentItem').textContent = `CSV loaded: ${csvData.length} rows`;
+            document.getElementById('processBtn').classList.remove('hidden');
+            
+            // Load first row for testing
+            if (csvData.length > 0) {
+              loadRowData(csvData[0]);
+            }
+          },
+          error: (error) => {
+            console.error('CSV parsing error:', error);
+            document.getElementById('currentItem').textContent = 'Error parsing CSV';
+          }
+        });
+      });
+
+      // Control bindings
+      function bindSlider(id, numId, property, callback) {
+        const slider = document.getElementById(id);
+        const number = document.getElementById(numId);
+        
+        const updateValue = (value) => {
+          settings[property] = parseFloat(value);
+          if (callback) callback(settings[property]);
+        };
+        
+        slider.addEventListener('input', () => {
+          number.value = slider.value;
+          updateValue(slider.value);
+        });
+        
+        number.addEventListener('input', () => {
+          slider.value = number.value;
+          updateValue(number.value);
+        });
+      }
+
+      bindSlider('adjustX', 'adjustXVal', 'cardX', (v) => { if (cardMesh) cardMesh.position.x = v; });
+      bindSlider('adjustY', 'adjustYVal', 'cardY', (v) => { if (cardMesh) cardMesh.position.y = v; });
+      bindSlider('adjustPitch', 'adjustPitchVal', 'pitch', (v) => { if (cardMesh) cardMesh.rotation.x = v; });
+      bindSlider('rotationSpeed', 'rotationSpeedVal', 'rotationSpeed', () => updateDurationDisplay());
+      bindSlider('scale', 'scaleVal', 'scale', (v) => { if (cardMesh) cardMesh.scale.set(v, v, v); });
+      bindSlider('thickness', 'thicknessVal', 'thickness', () => createCard());
+      bindSlider('bgScale', 'bgScaleVal', 'bgScale', () => {
+        if (csvData.length > 0) setBackground(csvData[currentRowIndex]?.background);
+      });
+      bindSlider('rotations', 'rotationsVal', 'rotations', () => updateDurationDisplay());
+      bindSlider('fps', 'fpsVal', 'fps', () => updateDurationDisplay());
+
+      // Initialize duration display
+      updateDurationDisplay();
+
+      // Test button
+      document.getElementById('testBtn').addEventListener('click', () => {
+        if (csvData.length > 0) {
+          loadRowData(csvData[0]);
         }
       });
-    });
-  </script>
-</body>
+
+      // Process all rows
+      document.getElementById('processBtn').addEventListener('click', async () => {
+        if (isProcessing || csvData.length === 0) return;
+        
+        isProcessing = true;
+        processedVideos = [];
+        
+        document.getElementById('progress').classList.remove('hidden');
+        document.getElementById('progressText').classList.remove('hidden');
+        document.getElementById('processBtn').textContent = 'Processing...';
+        document.getElementById('processBtn').disabled = true;
+
+        for (let i = 0; i < csvData.length; i++) {
+          currentRowIndex = i;
+          const rowData = csvData[i];
+          
+          document.getElementById('progressText').textContent = `${i + 1} / ${csvData.length}`;
+          document.getElementById('progress').value = ((i + 1) / csvData.length) * 100;
+          
+          const loaded = await loadRowData(rowData);
+          if (loaded) {
+            document.getElementById('currentItem').textContent = `Exporting: ${rowData.name}`;
+            await exportVideo(rowData.name);
+          }
+        }
+        
+        isProcessing = false;
+        document.getElementById('processBtn').textContent = 'Process All Rows';
+        document.getElementById('processBtn').disabled = false;
+        document.getElementById('currentItem').textContent = `Completed: ${processedVideos.length} videos exported`;
+        document.getElementById('downloadAllBtn').classList.remove('hidden');
+      });
+
+      // Download all videos
+      document.getElementById('downloadAllBtn').addEventListener('click', () => {
+        processedVideos.forEach(video => {
+          const url = URL.createObjectURL(video.blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = video.filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      });
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        if (cardMesh && !isProcessing) {
+          cardMesh.rotation.y += settings.rotationSpeed;
+        }
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Resize handler
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
 </html>
