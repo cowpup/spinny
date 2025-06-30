@@ -10,9 +10,6 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       background-color: black;
     }
     canvas {
@@ -53,55 +50,118 @@
     }
   </style>
   <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <div id="upload-container">
     <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
     <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
     <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
-    <label>CSV File: <input type="file" id="csvInput" accept=".csv"></label><br>
-    <button id="submitBtn">Submit</button><br>
-
     <div class="slider-container">
-      <label for="adjustX">Adjust Horizontal (X):</label>
-      <input type="range" id="adjustX" min="-5" max="5" step="0.1">
-      <input type="number" id="adjustXVal">
+      <label for="adjustX">Adjust X:</label>
+      <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0">
+      <input type="number" id="adjustXVal" value="0">
     </div>
     <div class="slider-container">
-      <label for="adjustY">Adjust Vertical (Y):</label>
-      <input type="range" id="adjustY" min="-5" max="5" step="0.1">
-      <input type="number" id="adjustYVal">
-    </div>
-    <div class="slider-container">
-      <label for="adjustPitch">Adjust Pitch (Z):</label>
-      <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
-      <input type="number" id="adjustPitchVal">
+      <label for="adjustY">Adjust Y:</label>
+      <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3">
+      <input type="number" id="adjustYVal" value="0.3">
     </div>
     <div class="slider-container">
       <label for="rotationSpeed">Rotate Speed:</label>
-      <input type="range" id="rotationSpeed" min="0.001" max="0.1" step="0.001">
-      <input type="number" id="rotationSpeedVal">
+      <input type="range" id="rotationSpeed" min="0.001" max="0.05" step="0.001" value="0.01">
+      <input type="number" id="rotationSpeedVal" value="0.01">
     </div>
-    <div class="slider-container">
-      <label for="scale">Scale:</label>
-      <input type="range" id="scale" min="0.1" max="2" step="0.01">
-      <input type="number" id="scaleVal">
-    </div>
-    <div class="slider-container">
-      <label for="bgScale">Background Scale:</label>
-      <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
-      <input type="number" id="bgScaleVal">
-    </div>
+    <button id="downloadTemplateBtn">Download Template CSV</button>
   </div>
 
-  <div id="progressBar"><div id="progressBarFill"></div></div>
-  <button id="exportBtn" style="position:absolute; top:10px; right:10px; z-index:10;">Export MP4</button>
-  <button id="batchExportBtn" style="position:absolute; top:40px; right:10px; z-index:10;">Batch Export CSV</button>
-  <button id="downloadTemplateBtn" style="position:absolute; top:70px; right:10px; z-index:10;">Download Template CSV</button>
+  <canvas id="threeCanvas"></canvas>
 
   <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('threeCanvas'), alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    let frontTexture, backTexture, cardMesh;
+    const loader = new THREE.TextureLoader();
+    const bgPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 10),
+      new THREE.MeshBasicMaterial({ map: loader.load('dripslabbackground.png') })
+    );
+    bgPlane.position.z = -5;
+    scene.add(bgPlane);
+
+    function createCard(front, back) {
+      const geometry = new THREE.BoxGeometry(1, 1.4, 0.04);
+      const materials = [
+        new THREE.MeshBasicMaterial({ color: 0x333333 }), // right
+        new THREE.MeshBasicMaterial({ color: 0x333333 }), // left
+        new THREE.MeshBasicMaterial({ color: 0x333333 }), // top
+        new THREE.MeshBasicMaterial({ color: 0x333333 }), // bottom
+        new THREE.MeshBasicMaterial({ map: front }), // front
+        new THREE.MeshBasicMaterial({ map: back }) // back
+      ];
+      const mesh = new THREE.Mesh(geometry, materials);
+      return mesh;
+    }
+
+    function loadDefaultTextures() {
+      loader.load('front.png', tex => {
+        frontTexture = tex;
+        loader.load('back.png', backTex => {
+          backTexture = backTex;
+          cardMesh = createCard(frontTexture, backTexture);
+          scene.add(cardMesh);
+        });
+      });
+    }
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(1, 1, 2);
+    scene.add(light);
+
+    camera.position.z = 2.5;
+    loadDefaultTextures();
+
+    const sliders = ['adjustX', 'adjustY', 'rotationSpeed'];
+    sliders.forEach(id => {
+      const range = document.getElementById(id);
+      const num = document.getElementById(id + 'Val');
+      range.addEventListener('input', () => num.value = range.value);
+      num.addEventListener('input', () => range.value = num.value);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (cardMesh) {
+        const speed = parseFloat(document.getElementById('rotationSpeed').value);
+        cardMesh.rotation.y += speed;
+        cardMesh.position.x = parseFloat(document.getElementById('adjustX').value);
+        cardMesh.position.y = parseFloat(document.getElementById('adjustY').value);
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function handleFileUpload(input, isFront) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        loader.load(e.target.result, tex => {
+          if (isFront) frontTexture = tex;
+          else backTexture = tex;
+          if (cardMesh) scene.remove(cardMesh);
+          cardMesh = createCard(frontTexture, backTexture);
+          scene.add(cardMesh);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('frontInput').addEventListener('change', e => handleFileUpload(e.target, true));
+    document.getElementById('backInput').addEventListener('change', e => handleFileUpload(e.target, false));
+
     document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
       const csvContent = 'front,back,background\nhttps://example.com/card-front.png,https://example.com/card-back.png,https://example.com/bg.png';
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -112,28 +172,6 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    });
-
-    window.addEventListener('DOMContentLoaded', () => {
-      const frontInput = document.getElementById('frontInput');
-      const backInput = document.getElementById('backInput');
-      const bgInput = document.getElementById('bgInput');
-
-      function setDefaultImage(inputElement, path) {
-        fetch(path)
-          .then(res => res.blob())
-          .then(blob => {
-            const file = new File([blob], path, { type: blob.type });
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            inputElement.files = dataTransfer.files;
-            inputElement.dispatchEvent(new Event('change'));
-          });
-      }
-
-      setDefaultImage(frontInput, 'front.png');
-      setDefaultImage(backInput, 'back.png');
-      setDefaultImage(bgInput, 'dripslabbackground.png');
     });
   </script>
 </body>
