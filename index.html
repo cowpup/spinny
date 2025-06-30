@@ -287,12 +287,20 @@
             texture => {
               texture.colorSpace = THREE.SRGBColorSpace;
               
-              // Keep original aspect ratio and size (2500x2500)
-              // Scale uniformly without distortion
-              const baseSize = 12; // Base size for 2500x2500
+              // Always maintain square aspect ratio regardless of actual image dimensions
+              // This ensures the background stays proportional to the original 2500x2500 design
+              const baseSize = 12; // Base size for square background
               const scaledSize = baseSize * settings.bgScale;
               
+              // Force square geometry regardless of texture aspect ratio
               const bgGeometry = new THREE.PlaneGeometry(scaledSize, scaledSize);
+              
+              // Configure texture to fill the square without stretching
+              texture.wrapS = THREE.ClampToEdgeWrap;
+              texture.wrapT = THREE.ClampToEdgeWrap;
+              texture.repeat.set(1, 1);
+              texture.offset.set(0, 0);
+              
               const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
               
               if (backgroundPlane) scene.remove(backgroundPlane);
@@ -398,6 +406,7 @@
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.href = url;
         a.download = 'card_animation_template.csv';
         a.click();
         URL.revokeObjectURL(url);
