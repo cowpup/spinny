@@ -332,10 +332,15 @@
 
       function exportVideo(filename) {
         return new Promise((resolve) => {
-          // Use the actual rotation speed from settings
-          const totalFrames = Math.round((settings.rotations * Math.PI * 2) / Math.abs(settings.rotationSpeed));
+          // Calculate duration based on what you see on screen
+          // If rotation speed is 0.0085 and you want 1 full rotation (2π radians)
+          const radiansNeeded = settings.rotations * Math.PI * 2;
+          const framesNeeded = Math.ceil(radiansNeeded / Math.abs(settings.rotationSpeed));
+          
+          console.log(`Exporting ${filename}: ${framesNeeded} frames at ${settings.fps} FPS`);
+          console.log(`Rotation speed: ${settings.rotationSpeed} per frame`);
 
-          // Create canvas for recording - use the main canvas directly
+          // Record directly from the main canvas
           const canvas = renderer.domElement;
           const stream = canvas.captureStream(settings.fps);
           const recorder = new MediaRecorder(stream, { 
@@ -352,8 +357,11 @@
           
           recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
-            console.log(`Video blob size for ${filename}: ${blob.size} bytes`);
+            console.log(`${filename} recorded: ${blob.size} bytes`);
+            
+            // Add to processedVideos array immediately
             processedVideos.push({ filename: filename + '.mp4', blob });
+            console.log(`Total videos collected: ${processedVideos.length}`);
             resolve();
           };
 
@@ -370,18 +378,20 @@
               return;
             }
             
-            // Use the exact rotation speed from settings
-            cardMesh.rotation.y = startRotation + (framesCaptured * settings.rotationSpeed);
+            // Match exactly what you see on screen - use the same rotation speed
+            cardMesh.rotation.y += settings.rotationSpeed;
             
-            // Render frame
+            // Render the frame
             renderer.render(scene, camera);
             
             framesCaptured++;
             
-            // Stop when we've captured enough frames for the desired rotations
-            if (framesCaptured >= totalFrames) {
+            if (framesCaptured >= framesNeeded) {
               clearInterval(captureInterval);
-              setTimeout(() => recorder.stop(), 100); // Small delay to ensure last frame
+              // Small delay to ensure last frame is captured
+              setTimeout(() => {
+                recorder.stop();
+              }, 50);
             }
           }, 1000 / settings.fps);
         });
@@ -478,12 +488,15 @@
         if (isProcessing || csvData.length === 0) return;
         
         isProcessing = true;
-        processedVideos = [];
+        processedVideos = []; // Clear previous videos
         
         document.getElementById('progress').classList.remove('hidden');
         document.getElementById('progressText').classList.remove('hidden');
         document.getElementById('processBtn').textContent = 'Processing...';
         document.getElementById('processBtn').disabled = true;
+        document.getElementById('downloadAllBtn').classList.add('hidden'); // Hide until complete
+
+        console.log(`Starting batch processing of ${csvData.length} rows`);
 
         for (let i = 0; i < csvData.length; i++) {
           currentRowIndex = i;
@@ -492,18 +505,28 @@
           document.getElementById('progressText').textContent = `${i + 1} / ${csvData.length}`;
           document.getElementById('progress').value = ((i + 1) / csvData.length) * 100;
           
+          console.log(`Processing row ${i + 1}: ${rowData.name}`);
+          
           const loaded = await loadRowData(rowData);
           if (loaded) {
             document.getElementById('currentItem').textContent = `Exporting: ${rowData.name}`;
             await exportVideo(rowData.name);
+            console.log(`Completed ${rowData.name}. Total videos so far: ${processedVideos.length}`);
+            
+            // Update status to show progress
+            document.getElementById('currentItem').textContent = `Completed: ${rowData.name} (${processedVideos.length}/${csvData.length})`;
+          } else {
+            console.log(`Failed to load ${rowData.name}`);
           }
         }
         
         isProcessing = false;
         document.getElementById('processBtn').textContent = 'Process All Rows';
         document.getElementById('processBtn').disabled = false;
-        document.getElementById('currentItem').textContent = `Completed: ${processedVideos.length} videos exported`;
+        document.getElementById('currentItem').textContent = `All completed! ${processedVideos.length} videos ready for download`;
         document.getElementById('downloadAllBtn').classList.remove('hidden');
+        
+        console.log(`Batch processing complete. Final video count: ${processedVideos.length}`);
       });
 
       // Download all videos as ZIP
