@@ -62,11 +62,18 @@
         <input type="range" id="rotationSpeed" min="-0.1" max="0.1" step="0.001" value="0.0085">
         <input type="number" id="rotationSpeedVal" value="0.0085">
       </div>
+      <div class="slider-container">
+        <label for="scale">Scale:</label>
+        <input type="range" id="scale" min="0.1" max="2" step="0.01" value="0.9">
+        <input type="number" id="scaleVal" value="0.9">
+      </div>
     </div>
     <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
     <script>
       let frontTexture, backTexture, cardMesh;
       let rotationSpeed = 0.0085;
+      let scaleValue = 0.9;
+      let cardX = 0, cardY = 0.3, pitch = 0;
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -109,10 +116,11 @@
         }
 
         cardMesh = new THREE.Mesh(geometry, materials);
-        cardMesh.scale.set(0.9, 0.9, 0.9);
+        cardMesh.scale.set(scaleValue, scaleValue, scaleValue);
         cardMesh.castShadow = true;
         cardMesh.receiveShadow = false;
-        cardMesh.position.y = parseFloat(document.getElementById('adjustY').value);
+        cardMesh.position.set(cardX, cardY, 0);
+        cardMesh.rotation.x = pitch;
         scene.add(cardMesh);
       }
 
@@ -180,10 +188,11 @@
         });
       }
 
-      bindSlider('adjustX', 'adjustXVal', v => { if (cardMesh) cardMesh.position.x = v; });
-      bindSlider('adjustY', 'adjustYVal', v => { if (cardMesh) cardMesh.position.y = v; });
-      bindSlider('adjustPitch', 'adjustPitchVal', v => { if (cardMesh) cardMesh.rotation.x = v; });
+      bindSlider('adjustX', 'adjustXVal', v => { cardX = v; if (cardMesh) cardMesh.position.x = v; });
+      bindSlider('adjustY', 'adjustYVal', v => { cardY = v; if (cardMesh) cardMesh.position.y = v; });
+      bindSlider('adjustPitch', 'adjustPitchVal', v => { pitch = v; if (cardMesh) cardMesh.rotation.x = v; });
       bindSlider('rotationSpeed', 'rotationSpeedVal', v => { rotationSpeed = v; });
+      bindSlider('scale', 'scaleVal', v => { scaleValue = v; if (cardMesh) cardMesh.scale.set(v, v, v); });
 
       function animate() {
         requestAnimationFrame(animate);
