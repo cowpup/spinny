@@ -176,18 +176,20 @@ document.getElementById('adjustScale').addEventListener('input', e => {
     img.src = event.target.result;
   };
   reader.readAsDataURL(file);
-    };
-    img.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
-      }
+}
 
       document.getElementById('frontInput').addEventListener('change', e => {
-        handleFile(e.target, texture => (frontTexture = texture));
-      });
+  handleFile(e.target, texture => {
+    frontTexture = texture;
+    createCard();
+  });
+});
       document.getElementById('backInput').addEventListener('change', e => {
-        handleFile(e.target, texture => (backTexture = texture));
-      });
+  handleFile(e.target, texture => {
+    backTexture = texture;
+    createCard();
+  });
+});
 
       function animate() {
         requestAnimationFrame(animate);
@@ -202,12 +204,12 @@ const loader = new THREE.TextureLoader();
 loader.load('front.jpg', texture => {
   texture.colorSpace = THREE.SRGBColorSpace;
   frontTexture = texture;
-  if (frontTexture && backTexture) createCard();
+  if (backTexture) createCard();
 });
 loader.load('back.jpg', texture => {
   texture.colorSpace = THREE.SRGBColorSpace;
   backTexture = texture;
-  if (frontTexture && backTexture) createCard();
+  if (frontTexture) createCard();
 });
 
       window.addEventListener('resize', () => {
