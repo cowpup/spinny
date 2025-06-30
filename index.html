@@ -133,18 +133,29 @@ document.getElementById('adjustScale').addEventListener('input', e => {
       }
 
       function createCard() {
-        if (!frontTexture || !backTexture) return;
-        if (cardMesh) scene.remove(cardMesh);
+  if (cardMesh) scene.remove(cardMesh);
 
-        const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
-        const materials = createMaterialWithTextures(frontTexture, backTexture);
+  const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
+  const materials = [];
+  const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const blank = new THREE.MeshStandardMaterial({ color: 0x222222 });
 
-        cardMesh = new THREE.Mesh(geometry, materials);
-        cardMesh.scale.set(0.9, 0.9, 0.9);
-        cardMesh.castShadow = true;
-        cardMesh.receiveShadow = false;
-        cardMesh.position.y = 0.3;
-        scene.add(cardMesh);
+  for (let i = 0; i < 6; i++) {
+    if (i === 4) {
+      materials.push(frontTexture ? new THREE.MeshStandardMaterial({ map: frontTexture }) : blank);
+    } else if (i === 5) {
+      materials.push(backTexture ? new THREE.MeshStandardMaterial({ map: backTexture }) : blank);
+    } else {
+      materials.push(defaultEdge);
+    }
+  }
+
+  cardMesh = new THREE.Mesh(geometry, materials);
+  cardMesh.scale.set(0.9, 0.9, 0.9);
+  cardMesh.castShadow = true;
+  cardMesh.receiveShadow = false;
+  cardMesh.position.y = 0.3;
+  scene.add(cardMesh);
 
         
       }
@@ -154,15 +165,19 @@ document.getElementById('adjustScale').addEventListener('input', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function (event) {
-    const image = new Image();
-    image.onload = function () {
-      const texture = new THREE.Texture(image);
+    const img = new Image();
+    img.onload = function () {
+      const texture = new THREE.Texture(img);
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       callback(texture);
-      if (frontTexture && backTexture) createCard();
+      createCard();
     };
-    image.src = event.target.result;
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+    };
+    img.src = event.target.result;
   };
   reader.readAsDataURL(file);
       }
@@ -232,22 +247,7 @@ loader.load('back.jpg', texture => {
     }
   }, 1000 / 30);
 });
-  let frame = 0;
-  const interval = setInterval(() => {
-    renderer.render(scene, camera);
-    gif.addFrame(canvas, { copy: true, delay: 33 });
-    frame++;
-    if (frame >= gifLength) {
-      clearInterval(interval);
-      gif.on('finished', blob => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'spinning_card.gif';
-        link.click();
-      });
-      gif.render();
-    }
+  
     if (cardMesh) cardMesh.rotation.y += 0.0085;
   }, 33);
 });
