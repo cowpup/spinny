@@ -41,13 +41,14 @@
   <option value="2.5"></option>
   <option value="5" label="+5"></option>
 </datalist><br>
-<label>Adjust Scale: <input type="range" id="adjustScale" min="-0.5" max="0.5" step="0.01" value="0" list="tickmarksScale"></label>
-<datalist id="tickmarksScale">
-  <option value="-0.5" label="-0.5"></option>
-  <option value="-0.25"></option>
+$1<br>
+<label>Adjust Pitch (Z): <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0" list="tickmarksPitch"></label>
+<datalist id="tickmarksPitch">
+  <option value="-1.5" label="-1.5"></option>
+  <option value="-0.75"></option>
   <option value="0" label="0"></option>
-  <option value="0.25"></option>
-  <option value="0.5" label="+0.5"></option>
+  <option value="0.75"></option>
+  <option value="1.5" label="+1.5"></option>
 </datalist>
 </div>
 <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
@@ -83,13 +84,10 @@ document.getElementById('adjustY').addEventListener('input', e => {
   if (cardMesh) cardMesh.position.y = parseFloat(e.target.value);
 });
 
-document.getElementById('adjustScale').addEventListener('input', e => {
-  if (cardMesh) {
-    const baseScale = 0.9;
-    const scaleOffset = parseFloat(e.target.value);
-    const newScale = baseScale + scaleOffset;
-    cardMesh.scale.set(newScale, newScale, newScale);
-  }
+$1
+
+document.getElementById('adjustPitch').addEventListener('input', e => {
+  if (cardMesh) cardMesh.rotation.x = parseFloat(e.target.value);
 });
       let frontTexture, backTexture, cardMesh;
 
@@ -171,7 +169,10 @@ document.getElementById('adjustScale').addEventListener('input', e => {
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       callback(texture);
-      createCard();
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
     };
     img.src = event.target.result;
   };
@@ -201,22 +202,40 @@ document.getElementById('adjustScale').addEventListener('input', e => {
 // Load default background and card images
 setBackground('dripbackground.png');
 const loader = new THREE.TextureLoader();
-loader.load('front.jpg', texture => {
-  texture.colorSpace = THREE.SRGBColorSpace;
-  frontTexture = texture;
-  if (backTexture) {
+loader.load(
+  'front.jpg',
+  texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    frontTexture = texture;
+    if (backTexture || !backTexture) {
+      createCard();
+      animate();
+    }
+  },
+  undefined,
+  err => {
+    console.warn('Failed to load front.jpg:', err);
     createCard();
     animate();
   }
-});
-loader.load('back.jpg', texture => {
-  texture.colorSpace = THREE.SRGBColorSpace;
-  backTexture = texture;
-  if (frontTexture) {
+);
+loader.load(
+  'back.jpg',
+  texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    backTexture = texture;
+    if (frontTexture || !frontTexture) {
+      createCard();
+      animate();
+    }
+  },
+  undefined,
+  err => {
+    console.warn('Failed to load back.jpg:', err);
     createCard();
     animate();
   }
-});
+);
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
