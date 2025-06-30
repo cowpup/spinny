@@ -4,8 +4,16 @@
     <meta charset="UTF-8" />
     <title>Spinning Pokémon Card</title>
     <style>
-      body { margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center;  }
-      canvas { display: block; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      canvas {
+        display: block;
+      }
       #upload-container {
         position: absolute;
         top: 10px;
@@ -20,75 +28,37 @@
   </head>
   <body>
     <div id="upload-container">
-  <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
-  <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
-  <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
-  <button id="submitBtn">Submit</button><br>
-<label>Adjust Horizontal (X): <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0" list="tickmarksX"></label><br>
-<datalist id="tickmarksX">
-  <option value="-5" label="-5"></option>
-  <option value="-2.5"></option>
-  <option value="0" label="0"></option>
-  <option value="2.5"></option>
-  <option value="5" label="+5"></option>
-</datalist>
-
-<label>Adjust Vertical (Y): <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3" list="tickmarksY"></label>
-<datalist id="tickmarksY">
-  <option value="-5" label="-5"></option>
-  <option value="-2.5"></option>
-  <option value="0" label="0"></option>
-  <option value="2.5"></option>
-  <option value="5" label="+5"></option>
-</datalist><br>
-$1<br>
-<label>Adjust Pitch (Z): <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0" list="tickmarksPitch"></label>
-<datalist id="tickmarksPitch">
-  <option value="-1.5" label="-1.5"></option>
-  <option value="-0.75"></option>
-  <option value="0" label="0"></option>
-  <option value="0.75"></option>
-  <option value="1.5" label="+1.5"></option>
-</datalist>
-</div>
-<button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
-<script>
-document.getElementById('bgInput').addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function (event) {
-    setBackground(event.target.result);
-  };
-  reader.readAsDataURL(file);
-});
-
-function setBackground(imageUrl) {
-  document.body.style.backgroundImage = `url('${imageUrl}')`;
-  document.body.style.backgroundSize = 'contain';
-  document.body.style.backgroundPosition = 'center';
-  document.body.style.backgroundRepeat = 'no-repeat';
-  document.body.style.backgroundAttachment = 'fixed';
-}
-</script>
-<script>
-document.getElementById('submitBtn').addEventListener('click', () => {
-  document.getElementById('upload-container').style.display = 'none';
-  document.getElementById('exportBtn').style.display = 'block';
-});
-
-document.getElementById('adjustX').addEventListener('input', e => {
-  if (cardMesh) cardMesh.position.x = parseFloat(e.target.value);
-});
-document.getElementById('adjustY').addEventListener('input', e => {
-  if (cardMesh) cardMesh.position.y = parseFloat(e.target.value);
-});
-
-$1
-
-document.getElementById('adjustPitch').addEventListener('input', e => {
-  if (cardMesh) cardMesh.rotation.x = parseFloat(e.target.value);
-});
+      <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
+      <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
+      <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
+      <button id="submitBtn">Submit</button><br>
+      <label>Adjust Horizontal (X): <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0" list="tickmarksX"></label><br>
+      <datalist id="tickmarksX">
+        <option value="-5" label="-5"></option>
+        <option value="-2.5"></option>
+        <option value="0" label="0"></option>
+        <option value="2.5"></option>
+        <option value="5" label="+5"></option>
+      </datalist>
+      <label>Adjust Vertical (Y): <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3" list="tickmarksY"></label><br>
+      <datalist id="tickmarksY">
+        <option value="-5" label="-5"></option>
+        <option value="-2.5"></option>
+        <option value="0" label="0"></option>
+        <option value="2.5"></option>
+        <option value="5" label="+5"></option>
+      </datalist><br>
+      <label>Adjust Pitch (Z): <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0" list="tickmarksPitch"></label><br>
+      <datalist id="tickmarksPitch">
+        <option value="-1.5" label="-1.5"></option>
+        <option value="-0.75"></option>
+        <option value="0" label="0"></option>
+        <option value="0.75"></option>
+        <option value="1.5" label="+1.5"></option>
+      </datalist>
+    </div>
+    <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
+    <script>
       let frontTexture, backTexture, cardMesh;
 
       const scene = new THREE.Scene();
@@ -113,84 +83,91 @@ document.getElementById('adjustPitch').addEventListener('input', e => {
       spotlight.shadow.mapSize.height = 1024;
       scene.add(spotlight);
 
-      
+      function createCard() {
+        if (cardMesh) scene.remove(cardMesh);
 
-      function createMaterialWithTextures(frontTex, backTex) {
+        const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
         const materials = [];
         const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const blank = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
         for (let i = 0; i < 6; i++) {
           if (i === 4) {
-            materials.push(new THREE.MeshStandardMaterial({ map: frontTex }));
+            materials.push(frontTexture ? new THREE.MeshStandardMaterial({ map: frontTexture }) : blank);
           } else if (i === 5) {
-            materials.push(new THREE.MeshStandardMaterial({ map: backTex }));
+            materials.push(backTexture ? new THREE.MeshStandardMaterial({ map: backTexture }) : blank);
           } else {
             materials.push(defaultEdge);
           }
         }
-        return materials;
-      }
 
-      function createCard() {
-  if (cardMesh) scene.remove(cardMesh);
-
-  const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
-  const materials = [];
-  const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
-  const blank = new THREE.MeshStandardMaterial({ color: 0x222222 });
-
-  for (let i = 0; i < 6; i++) {
-    if (i === 4) {
-      materials.push(frontTexture ? new THREE.MeshStandardMaterial({ map: frontTexture }) : blank);
-    } else if (i === 5) {
-      materials.push(backTexture ? new THREE.MeshStandardMaterial({ map: backTexture }) : blank);
-    } else {
-      materials.push(defaultEdge);
-    }
-  }
-
-  cardMesh = new THREE.Mesh(geometry, materials);
-  cardMesh.scale.set(0.9, 0.9, 0.9);
-  cardMesh.castShadow = true;
-  cardMesh.receiveShadow = false;
-  cardMesh.position.y = 0.3;
-  scene.add(cardMesh);
-
-        
+        cardMesh = new THREE.Mesh(geometry, materials);
+        cardMesh.scale.set(0.9, 0.9, 0.9);
+        cardMesh.castShadow = true;
+        cardMesh.receiveShadow = false;
+        cardMesh.position.y = 0.3;
+        scene.add(cardMesh);
       }
 
       function handleFile(input, callback) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function (event) {
-    const img = new Image();
-    img.onload = function () {
-      const texture = new THREE.Texture(img);
-      texture.needsUpdate = true;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      callback(texture);
-    };
-    img.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
-    };
-    img.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
-}
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const img = new Image();
+          img.onload = function () {
+            const texture = new THREE.Texture(img);
+            texture.needsUpdate = true;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            callback(texture);
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function setBackground(imageUrl) {
+        document.body.style.backgroundImage = `url('${imageUrl}')`;
+        document.body.style.backgroundSize = 'contain';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.backgroundAttachment = 'fixed';
+      }
 
       document.getElementById('frontInput').addEventListener('change', e => {
-  handleFile(e.target, texture => {
-    frontTexture = texture;
-    createCard();
-  });
-});
+        handleFile(e.target, texture => {
+          frontTexture = texture;
+          createCard();
+        });
+      });
       document.getElementById('backInput').addEventListener('change', e => {
-  handleFile(e.target, texture => {
-    backTexture = texture;
-    createCard();
-  });
-});
+        handleFile(e.target, texture => {
+          backTexture = texture;
+          createCard();
+        });
+      });
+      document.getElementById('bgInput').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          setBackground(event.target.result);
+        };
+        reader.readAsDataURL(file);
+      });
+      document.getElementById('submitBtn').addEventListener('click', () => {
+        document.getElementById('upload-container').style.display = 'none';
+        document.getElementById('exportBtn').style.display = 'block';
+      });
+      document.getElementById('adjustX').addEventListener('input', e => {
+        if (cardMesh) cardMesh.position.x = parseFloat(e.target.value);
+      });
+      document.getElementById('adjustY').addEventListener('input', e => {
+        if (cardMesh) cardMesh.position.y = parseFloat(e.target.value);
+      });
+      document.getElementById('adjustPitch').addEventListener('input', e => {
+        if (cardMesh) cardMesh.rotation.x = parseFloat(e.target.value);
+      });
 
       function animate() {
         requestAnimationFrame(animate);
@@ -199,85 +176,57 @@ document.getElementById('adjustPitch').addEventListener('input', e => {
       }
       animate();
 
-// Load default background and card images
-setBackground('dripbackground.png');
-const loader = new THREE.TextureLoader();
-loader.load(
-  'front.jpg',
-  texture => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    frontTexture = texture;
-    if (backTexture || !backTexture) {
-      createCard();
-      animate();
-    }
-  },
-  undefined,
-  err => {
-    console.warn('Failed to load front.jpg:', err);
-    createCard();
-    animate();
-  }
-);
-loader.load(
-  'back.jpg',
-  texture => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    backTexture = texture;
-    if (frontTexture || !frontTexture) {
-      createCard();
-      animate();
-    }
-  },
-  undefined,
-  err => {
-    console.warn('Failed to load back.jpg:', err);
-    createCard();
-    animate();
-  }
-);
+      setBackground('dripbackground.png');
+      const loader = new THREE.TextureLoader();
+      loader.load('front.jpg', texture => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        frontTexture = texture;
+        createCard();
+      });
+      loader.load('back.jpg', texture => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        backTexture = texture;
+        createCard();
+      });
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
       });
-    document.getElementById('exportBtn').addEventListener('click', () => {
-  const canvas = renderer.domElement;
-  const stream = canvas.captureStream(30); // 30fps
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-  const chunks = [];
 
-  recorder.ondataavailable = e => chunks.push(e.data);
-  recorder.onstop = e => {
-    const blob = new Blob(chunks, { type: 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'spinning_card.webm';
-    a.click();
-  };
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const canvas = renderer.domElement;
+        const stream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+        const chunks = [];
 
-  recorder.start();
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'spinning_card.webm';
+          a.click();
+        };
 
-  const totalFrames = Math.round((Math.PI * 2) / 0.0085); // One full spin
-  let framesCaptured = 0;
+        recorder.start();
 
-  const captureInterval = setInterval(() => {
-    if (!cardMesh) return;
-    cardMesh.rotation.y += 0.0085;
-    renderer.render(scene, camera);
-    framesCaptured++;
-    if (framesCaptured >= totalFrames) {
-      clearInterval(captureInterval);
-      recorder.stop();
-    }
-  }, 1000 / 30);
-});
-  
-    
-</script>
+        const totalFrames = Math.round((Math.PI * 2) / 0.0085);
+        let framesCaptured = 0;
 
-
-</body>
+        const captureInterval = setInterval(() => {
+          if (!cardMesh) return;
+          cardMesh.rotation.y += 0.0085;
+          renderer.render(scene, camera);
+          framesCaptured++;
+          if (framesCaptured >= totalFrames) {
+            clearInterval(captureInterval);
+            recorder.stop();
+          }
+        }, 1000 / 30);
+      });
+    </script>
+  </body>
 </html>
