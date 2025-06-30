@@ -1,177 +1,236 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Spinning Pokémon Card</title>
-    <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        background-color: black;
-      }
-      canvas {
-        display: block;
-      }
-      #upload-container {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        z-index: 10;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 10px;
-        border-radius: 8px;
-      }
-      .slider-container {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin: 5px 0;
-      }
-      .slider-container input[type=number] {
-        width: 50px;
-      }
-      #progressBar {
-        position: absolute;
-        top: 60px;
-        right: 10px;
-        width: 200px;
-        height: 10px;
-        background-color: #ddd;
-        z-index: 10;
-        display: none;
-      }
-      #progressBarFill {
-        height: 100%;
-        background-color: #4caf50;
-        width: 0%;
-      }
-    </style>
-    <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
-  </head>
-  <body>
-    <div id="upload-container">
-      <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
-      <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
-      <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
-      <button id="submitBtn">Submit</button><br>
+<head>
+  <meta charset="UTF-8" />
+  <title>Spinning Pokémon Card</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: black;
+    }
+    canvas {
+      display: block;
+    }
+    #upload-container {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin: 5px 0;
+    }
+    .slider-container input[type=number] {
+      width: 50px;
+    }
+    #progressBar {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      width: 200px;
+      height: 10px;
+      background-color: #ddd;
+      z-index: 10;
+      display: none;
+    }
+    #progressBarFill {
+      height: 100%;
+      background-color: #4caf50;
+      width: 0%;
+    }
+  </style>
+  <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <div id="upload-container">
+    <label>Front Image: <input type="file" id="frontInput" accept="image/*"></label><br>
+    <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
+    <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
+    <label>CSV File: <input type="file" id="csvInput" accept=".csv"></label><br>
+    <button id="submitBtn">Submit</button><br>
 
-      <div class="slider-container">
-        <label for="adjustX">Adjust Horizontal (X):</label>
-        <input type="range" id="adjustX" min="-5" max="5" step="0.1">
-        <input type="number" id="adjustXVal">
-      </div>
-      <div class="slider-container">
-        <label for="adjustY">Adjust Vertical (Y):</label>
-        <input type="range" id="adjustY" min="-5" max="5" step="0.1">
-        <input type="number" id="adjustYVal">
-      </div>
-      <div class="slider-container">
-        <label for="adjustPitch">Adjust Pitch (Z):</label>
-        <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
-        <input type="number" id="adjustPitchVal">
-      </div>
-      <div class="slider-container">
-        <label for="rotationSpeed">Rotate Speed:</label>
-        <input type="range" id="rotationSpeed" min="0.001" max="0.1" step="0.001">
-        <input type="number" id="rotationSpeedVal">
-      </div>
-      <div class="slider-container">
-        <label for="scale">Scale:</label>
-        <input type="range" id="scale" min="0.1" max="2" step="0.01">
-        <input type="number" id="scaleVal">
-      </div>
-      <div class="slider-container">
-        <label for="bgScale">Background Scale:</label>
-        <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
-        <input type="number" id="bgScaleVal">
-      </div>
+    <div class="slider-container">
+      <label for="adjustX">Adjust Horizontal (X):</label>
+      <input type="range" id="adjustX" min="-5" max="5" step="0.1">
+      <input type="number" id="adjustXVal">
     </div>
+    <div class="slider-container">
+      <label for="adjustY">Adjust Vertical (Y):</label>
+      <input type="range" id="adjustY" min="-5" max="5" step="0.1">
+      <input type="number" id="adjustYVal">
+    </div>
+    <div class="slider-container">
+      <label for="adjustPitch">Adjust Pitch (Z):</label>
+      <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
+      <input type="number" id="adjustPitchVal">
+    </div>
+    <div class="slider-container">
+      <label for="rotationSpeed">Rotate Speed:</label>
+      <input type="range" id="rotationSpeed" min="0.001" max="0.1" step="0.001">
+      <input type="number" id="rotationSpeedVal">
+    </div>
+    <div class="slider-container">
+      <label for="scale">Scale:</label>
+      <input type="range" id="scale" min="0.1" max="2" step="0.01">
+      <input type="number" id="scaleVal">
+    </div>
+    <div class="slider-container">
+      <label for="bgScale">Background Scale:</label>
+      <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
+      <input type="number" id="bgScaleVal">
+    </div>
+  </div>
 
-    <div id="progressBar"><div id="progressBarFill"></div></div>
-    <button id="exportBtn" style="position:absolute; top:10px; right:10px; z-index:10;">Export MP4</button>
+  <div id="progressBar"><div id="progressBarFill"></div></div>
+  <button id="exportBtn" style="position:absolute; top:10px; right:10px; z-index:10;">Export MP4</button>
+  <button id="batchExportBtn" style="position:absolute; top:40px; right:10px; z-index:10;">Batch Export CSV</button>
 
-    <script>
-      let rotationSpeed = parseFloat(localStorage.getItem('rotationSpeed') || 0.0085);
-      let scale = parseFloat(localStorage.getItem('scale') || 0.9);
-      let bgScale = parseFloat(localStorage.getItem('bgScale') || 1);
-      let adjustX = parseFloat(localStorage.getItem('adjustX') || 0);
-      let adjustY = parseFloat(localStorage.getItem('adjustY') || 0.3);
-      let adjustPitch = parseFloat(localStorage.getItem('adjustPitch') || 0);
+  <script>
+    let rotationSpeed = parseFloat(localStorage.getItem('rotationSpeed') || 0.0085);
+    let scale = parseFloat(localStorage.getItem('scale') || 0.9);
+    let bgScale = parseFloat(localStorage.getItem('bgScale') || 1);
+    let adjustX = parseFloat(localStorage.getItem('adjustX') || 0);
+    let adjustY = parseFloat(localStorage.getItem('adjustY') || 0.3);
+    let adjustPitch = parseFloat(localStorage.getItem('adjustPitch') || 0);
 
-      document.getElementById('adjustX').value = adjustX;
-      document.getElementById('adjustXVal').value = adjustX;
-      document.getElementById('adjustY').value = adjustY;
-      document.getElementById('adjustYVal').value = adjustY;
-      document.getElementById('adjustPitch').value = adjustPitch;
-      document.getElementById('adjustPitchVal').value = adjustPitch;
-      document.getElementById('rotationSpeed').value = rotationSpeed;
-      document.getElementById('rotationSpeedVal').value = rotationSpeed;
-      document.getElementById('scale').value = scale;
-      document.getElementById('scaleVal').value = scale;
-      document.getElementById('bgScale').value = bgScale;
-      document.getElementById('bgScaleVal').value = bgScale;
+    document.getElementById('adjustX').value = adjustX;
+    document.getElementById('adjustXVal').value = adjustX;
+    document.getElementById('adjustY').value = adjustY;
+    document.getElementById('adjustYVal').value = adjustY;
+    document.getElementById('adjustPitch').value = adjustPitch;
+    document.getElementById('adjustPitchVal').value = adjustPitch;
+    document.getElementById('rotationSpeed').value = rotationSpeed;
+    document.getElementById('rotationSpeedVal').value = rotationSpeed;
+    document.getElementById('scale').value = scale;
+    document.getElementById('scaleVal').value = scale;
+    document.getElementById('bgScale').value = bgScale;
+    document.getElementById('bgScaleVal').value = bgScale;
 
-      // Sync sliders and save to localStorage
-      const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
-      controls.forEach(control => {
-        const range = document.getElementById(control);
-        const num = document.getElementById(control + 'Val');
-        range.addEventListener('input', () => {
-          num.value = range.value;
-          localStorage.setItem(control, range.value);
-        });
-        num.addEventListener('input', () => {
-          range.value = num.value;
-          localStorage.setItem(control, num.value);
-        });
+    const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
+    controls.forEach(control => {
+      const range = document.getElementById(control);
+      const num = document.getElementById(control + 'Val');
+      range.addEventListener('input', () => {
+        num.value = range.value;
+        localStorage.setItem(control, range.value);
       });
+      num.addEventListener('input', () => {
+        range.value = num.value;
+        localStorage.setItem(control, num.value);
+      });
+    });
 
-      document.getElementById('exportBtn').addEventListener('click', () => {
-        const canvas = document.querySelector('canvas');
-        const stream = canvas.captureStream(30);
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const chunks = [];
+    document.getElementById('batchExportBtn').addEventListener('click', async () => {
+      const fileInput = document.getElementById('csvInput');
+      if (!fileInput.files.length) return alert("Please upload a CSV first.");
 
-        const rotationSpeedVal = parseFloat(document.getElementById('rotationSpeed').value);
-        const totalFrames = Math.round((Math.PI * 2) / rotationSpeedVal);
+      const file = fileInput.files[0];
+      Papa.parse(file, {
+        header: true,
+        download: false,
+        skipEmptyLines: true,
+        complete: async function(results) {
+          const rows = results.data;
+          const zip = new JSZip();
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const stream = canvas.captureStream(30);
+          const ctx = canvas.getContext('2d');
 
-        const progressBar = document.getElementById('progressBar');
-        const progressBarFill = document.getElementById('progressBarFill');
-        progressBar.style.display = 'block';
+          for (let i = 0; i < rows.length; i++) {
+            const { front, back, background } = rows[i];
+            try {
+              const [frontImg, backImg, bgImg] = await Promise.all([
+                loadImage(front),
+                loadImage(back),
+                loadImage(background)
+              ]);
 
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'spinning_card.mp4';
-          a.click();
-          progressBar.style.display = 'none';
-          progressBarFill.style.width = '0%';
-        };
+              let angle = 0;
+              const frames = [];
+              const totalFrames = Math.round((2 * Math.PI) / rotationSpeed);
+              for (let f = 0; f < totalFrames; f++) {
+                angle += rotationSpeed;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(bgImg, 0, 0, 512, 512);
+                const image = angle % (2 * Math.PI) < Math.PI ? frontImg : backImg;
+                ctx.save();
+                ctx.translate(256, 256);
+                ctx.rotate(angle);
+                ctx.drawImage(image, -128, -128, 256, 256);
+                ctx.restore();
+                frames.push(canvas.toDataURL('image/webp'));
+              }
 
-        recorder.start();
-
-        let framesCaptured = 0;
-        const captureInterval = setInterval(() => {
-          if (!cardMesh) return;
-          cardMesh.rotation.y += rotationSpeedVal;
-          renderer.render(scene, camera);
-          framesCaptured++;
-          progressBarFill.style.width = (framesCaptured / totalFrames) * 100 + '%';
-          if (framesCaptured >= totalFrames) {
-            clearInterval(captureInterval);
-            recorder.stop();
+              const video = await createWebM(frames, 30);
+              zip.file(`card_${i + 1}.webm`, video);
+            } catch (e) {
+              console.error("Error processing row", rows[i], e);
+            }
           }
-        }, 1000 / 30);
+
+          const content = await zip.generateAsync({ type: "blob" });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(content);
+          a.download = 'cards_export.zip';
+          a.click();
+        }
       });
-    </script>
-  </body>
+    });
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function createWebM(frames, fps) {
+      return new Promise(resolve => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        const stream = canvas.captureStream(fps);
+        const recorder = new MediaRecorder(stream);
+        const chunks = [];
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+        recorder.start();
+        let i = 0;
+        const drawNext = () => {
+          if (i >= frames.length) return recorder.stop();
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            i++;
+            setTimeout(drawNext, 1000 / fps);
+          };
+          img.src = frames[i];
+        };
+        drawNext();
+      });
+    }
+  </script>
+</body>
 </html>
