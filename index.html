@@ -36,6 +36,21 @@
       .slider-container input[type=number] {
         width: 50px;
       }
+      #progressBar {
+        position: absolute;
+        top: 60px;
+        right: 10px;
+        width: 200px;
+        height: 10px;
+        background-color: #ddd;
+        z-index: 10;
+        display: none;
+      }
+      #progressBarFill {
+        height: 100%;
+        background-color: #4caf50;
+        width: 0%;
+      }
     </style>
     <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
   </head>
@@ -48,219 +63,87 @@
 
       <div class="slider-container">
         <label for="adjustX">Adjust Horizontal (X):</label>
-        <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0">
-        <input type="number" id="adjustXVal" value="0">
+        <input type="range" id="adjustX" min="-5" max="5" step="0.1">
+        <input type="number" id="adjustXVal">
       </div>
       <div class="slider-container">
         <label for="adjustY">Adjust Vertical (Y):</label>
-        <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3">
-        <input type="number" id="adjustYVal" value="0.3">
+        <input type="range" id="adjustY" min="-5" max="5" step="0.1">
+        <input type="number" id="adjustYVal">
       </div>
       <div class="slider-container">
         <label for="adjustPitch">Adjust Pitch (Z):</label>
-        <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0">
-        <input type="number" id="adjustPitchVal" value="0">
+        <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
+        <input type="number" id="adjustPitchVal">
       </div>
       <div class="slider-container">
         <label for="rotationSpeed">Rotate Speed:</label>
-        <input type="range" id="rotationSpeed" min="-0.1" max="0.1" step="0.001" value="0.0085">
-        <input type="number" id="rotationSpeedVal" value="0.0085">
+        <input type="range" id="rotationSpeed" min="0.001" max="0.1" step="0.001">
+        <input type="number" id="rotationSpeedVal">
       </div>
       <div class="slider-container">
         <label for="scale">Scale:</label>
-        <input type="range" id="scale" min="0.1" max="2" step="0.01" value="0.9">
-        <input type="number" id="scaleVal" value="0.9">
+        <input type="range" id="scale" min="0.1" max="2" step="0.01">
+        <input type="number" id="scaleVal">
       </div>
       <div class="slider-container">
         <label for="bgScale">Background Scale:</label>
-        <input type="range" id="bgScale" min="0.1" max="3" step="0.01" value="1">
-        <input type="number" id="bgScaleVal" value="1">
+        <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
+        <input type="number" id="bgScaleVal">
       </div>
     </div>
-    <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
+
+    <div id="progressBar"><div id="progressBarFill"></div></div>
+    <button id="exportBtn" style="position:absolute; top:10px; right:10px; z-index:10;">Export MP4</button>
+
     <script>
-      let frontTexture, backTexture, cardMesh, backgroundPlane;
-      let rotationSpeed = 0.0085;
-      let scaleValue = 0.9;
-      let bgScaleValue = 1;
-      let cardX = 0, cardY = 0.3, pitch = 0;
-      let backgroundAspectRatio = 1;
+      let rotationSpeed = parseFloat(localStorage.getItem('rotationSpeed') || 0.0085);
+      let scale = parseFloat(localStorage.getItem('scale') || 0.9);
+      let bgScale = parseFloat(localStorage.getItem('bgScale') || 1);
+      let adjustX = parseFloat(localStorage.getItem('adjustX') || 0);
+      let adjustY = parseFloat(localStorage.getItem('adjustY') || 0.3);
+      let adjustPitch = parseFloat(localStorage.getItem('adjustPitch') || 0);
 
-      const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-      const canvasSize = Math.min(window.innerWidth, window.innerHeight);
-      renderer.setSize(canvasSize, canvasSize);
-      renderer.setClearColor(0x000000, 0);
-      renderer.shadowMap.enabled = true;
-      document.body.appendChild(renderer.domElement);
+      document.getElementById('adjustX').value = adjustX;
+      document.getElementById('adjustXVal').value = adjustX;
+      document.getElementById('adjustY').value = adjustY;
+      document.getElementById('adjustYVal').value = adjustY;
+      document.getElementById('adjustPitch').value = adjustPitch;
+      document.getElementById('adjustPitchVal').value = adjustPitch;
+      document.getElementById('rotationSpeed').value = rotationSpeed;
+      document.getElementById('rotationSpeedVal').value = rotationSpeed;
+      document.getElementById('scale').value = scale;
+      document.getElementById('scaleVal').value = scale;
+      document.getElementById('bgScale').value = bgScale;
+      document.getElementById('bgScaleVal').value = bgScale;
 
-      camera.position.set(0, 2, 8);
-      camera.lookAt(0, 0, 0);
-
-      scene.add(new THREE.AmbientLight(0x404040, 1.5));
-
-      const spotlight = new THREE.SpotLight(0xffffff, 1);
-      spotlight.position.set(0, 10, 5);
-      spotlight.castShadow = true;
-      spotlight.angle = Math.PI / 6;
-      spotlight.penumbra = 0.3;
-      spotlight.shadow.mapSize.width = 1024;
-      spotlight.shadow.mapSize.height = 1024;
-      scene.add(spotlight);
-
-      function createCard() {
-        if (cardMesh) scene.remove(cardMesh);
-
-        const geometry = new THREE.BoxGeometry(3.5, 5, 0.2);
-        const materials = [];
-        const defaultEdge = new THREE.MeshStandardMaterial({ color: 0x888888 });
-        const blank = new THREE.MeshStandardMaterial({ color: 0x222222 });
-
-        for (let i = 0; i < 6; i++) {
-          if (i === 4) {
-            materials.push(frontTexture ? new THREE.MeshStandardMaterial({ map: frontTexture }) : blank);
-          } else if (i === 5) {
-            materials.push(backTexture ? new THREE.MeshStandardMaterial({ map: backTexture }) : blank);
-          } else {
-            materials.push(defaultEdge);
-          }
-        }
-
-        cardMesh = new THREE.Mesh(geometry, materials);
-        cardMesh.scale.set(scaleValue, scaleValue, scaleValue);
-        cardMesh.castShadow = true;
-        cardMesh.receiveShadow = false;
-        cardMesh.position.set(cardX, cardY, 0);
-        cardMesh.rotation.x = pitch;
-        scene.add(cardMesh);
-      }
-
-      function setBackground(imageUrl) {
-        const loader = new THREE.TextureLoader();
-        loader.load(imageUrl, texture => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          texture.minFilter = THREE.LinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
-
-          const imgW = texture.image.width;
-          const imgH = texture.image.height;
-          backgroundAspectRatio = imgW / imgH;
-
-          const bgHeight = 20;
-          const bgWidth = bgHeight * backgroundAspectRatio;
-
-          const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
-          const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
-          if (backgroundPlane) scene.remove(backgroundPlane);
-          backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
-          backgroundPlane.position.set(0, 0, -5);
-          updateBgScale(bgScaleValue);
-          scene.add(backgroundPlane);
+      // Sync sliders and save to localStorage
+      const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
+      controls.forEach(control => {
+        const range = document.getElementById(control);
+        const num = document.getElementById(control + 'Val');
+        range.addEventListener('input', () => {
+          num.value = range.value;
+          localStorage.setItem(control, range.value);
         });
-      }
-
-      function updateBgScale(value) {
-        bgScaleValue = value;
-        if (backgroundPlane) backgroundPlane.scale.set(bgScaleValue * backgroundAspectRatio, bgScaleValue, 1);
-      }
-
-      document.getElementById('frontInput').addEventListener('change', e => {
-        handleFile(e.target, texture => {
-          frontTexture = texture;
-          createCard();
+        num.addEventListener('input', () => {
+          range.value = num.value;
+          localStorage.setItem(control, num.value);
         });
-      });
-
-      document.getElementById('backInput').addEventListener('change', e => {
-        handleFile(e.target, texture => {
-          backTexture = texture;
-          createCard();
-        });
-      });
-
-      function handleFile(input, callback) {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          const loader = new THREE.TextureLoader();
-          loader.load(event.target.result, texture => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            callback(texture);
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-
-      document.getElementById('bgInput').addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          setBackground(event.target.result);
-        };
-        reader.readAsDataURL(file);
-      });
-
-      document.getElementById('submitBtn').addEventListener('click', () => {
-        document.getElementById('upload-container').style.display = 'none';
-        document.getElementById('exportBtn').style.display = 'block';
-      });
-
-      function bindSlider(id, numId, callback) {
-        const slider = document.getElementById(id);
-        const number = document.getElementById(numId);
-        slider.addEventListener('input', () => {
-          number.value = slider.value;
-          callback(parseFloat(slider.value));
-        });
-        number.addEventListener('input', () => {
-          slider.value = number.value;
-          callback(parseFloat(number.value));
-        });
-      }
-
-      bindSlider('adjustX', 'adjustXVal', v => { cardX = v; if (cardMesh) cardMesh.position.x = v; });
-      bindSlider('adjustY', 'adjustYVal', v => { cardY = v; if (cardMesh) cardMesh.position.y = v; });
-      bindSlider('adjustPitch', 'adjustPitchVal', v => { pitch = v; if (cardMesh) cardMesh.rotation.x = v; });
-      bindSlider('rotationSpeed', 'rotationSpeedVal', v => { rotationSpeed = v; });
-      bindSlider('scale', 'scaleVal', v => { scaleValue = v; if (cardMesh) cardMesh.scale.set(v, v, v); });
-      bindSlider('bgScale', 'bgScaleVal', v => updateBgScale(v));
-
-      function animate() {
-        requestAnimationFrame(animate);
-        if (cardMesh) cardMesh.rotation.y += rotationSpeed;
-        renderer.render(scene, camera);
-      }
-      animate();
-
-      setBackground('dripbackground.png');
-      const loader = new THREE.TextureLoader();
-      loader.load('front.jpg', texture => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        frontTexture = texture;
-        createCard();
-      });
-      loader.load('back.jpg', texture => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        backTexture = texture;
-        createCard();
-      });
-
-      window.addEventListener('resize', () => {
-        const canvasSize = Math.min(window.innerWidth, window.innerHeight);
-        camera.aspect = 1;
-        camera.updateProjectionMatrix();
-        renderer.setSize(canvasSize, canvasSize);
       });
 
       document.getElementById('exportBtn').addEventListener('click', () => {
-        const canvas = renderer.domElement;
+        const canvas = document.querySelector('canvas');
         const stream = canvas.captureStream(30);
         const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
         const chunks = [];
+
+        const rotationSpeedVal = parseFloat(document.getElementById('rotationSpeed').value);
+        const totalFrames = Math.round((Math.PI * 2) / rotationSpeedVal);
+
+        const progressBar = document.getElementById('progressBar');
+        const progressBarFill = document.getElementById('progressBarFill');
+        progressBar.style.display = 'block';
 
         recorder.ondataavailable = e => chunks.push(e.data);
         recorder.onstop = () => {
@@ -268,20 +151,21 @@
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'spinning_card.webm';
+          a.download = 'spinning_card.mp4';
           a.click();
+          progressBar.style.display = 'none';
+          progressBarFill.style.width = '0%';
         };
 
         recorder.start();
 
-        const totalFrames = Math.round((Math.PI * 2) / rotationSpeed);
         let framesCaptured = 0;
-
         const captureInterval = setInterval(() => {
           if (!cardMesh) return;
-          cardMesh.rotation.y += rotationSpeed;
+          cardMesh.rotation.y += rotationSpeedVal;
           renderer.render(scene, camera);
           framesCaptured++;
+          progressBarFill.style.width = (framesCaptured / totalFrames) * 100 + '%';
           if (framesCaptured >= totalFrames) {
             clearInterval(captureInterval);
             recorder.stop();
