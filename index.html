@@ -33,21 +33,6 @@
     .slider-container input[type=number] {
       width: 50px;
     }
-    #progressBar {
-      position: absolute;
-      top: 60px;
-      right: 10px;
-      width: 200px;
-      height: 10px;
-      background-color: #ddd;
-      z-index: 10;
-      display: none;
-    }
-    #progressBarFill {
-      height: 100%;
-      background-color: #4caf50;
-      width: 0%;
-    }
   </style>
   <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
 </head>
@@ -57,19 +42,34 @@
     <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
     <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
     <div class="slider-container">
-      <label for="adjustX">Adjust X:</label>
-      <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0">
-      <input type="number" id="adjustXVal" value="0">
+      <label for="adjustX">Adjust Horizontal (X):</label>
+      <input type="range" id="adjustX" min="-5" max="5" step="0.1">
+      <input type="number" id="adjustXVal">
     </div>
     <div class="slider-container">
-      <label for="adjustY">Adjust Y:</label>
-      <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3">
-      <input type="number" id="adjustYVal" value="0.3">
+      <label for="adjustY">Adjust Vertical (Y):</label>
+      <input type="range" id="adjustY" min="-5" max="5" step="0.1">
+      <input type="number" id="adjustYVal">
+    </div>
+    <div class="slider-container">
+      <label for="adjustPitch">Adjust Pitch (Z):</label>
+      <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05">
+      <input type="number" id="adjustPitchVal">
     </div>
     <div class="slider-container">
       <label for="rotationSpeed">Rotate Speed:</label>
-      <input type="range" id="rotationSpeed" min="0.001" max="0.05" step="0.001" value="0.01">
-      <input type="number" id="rotationSpeedVal" value="0.01">
+      <input type="range" id="rotationSpeed" min="0.001" max="0.05" step="0.001">
+      <input type="number" id="rotationSpeedVal">
+    </div>
+    <div class="slider-container">
+      <label for="scale">Scale:</label>
+      <input type="range" id="scale" min="0.1" max="2" step="0.01">
+      <input type="number" id="scaleVal">
+    </div>
+    <div class="slider-container">
+      <label for="bgScale">Background Scale:</label>
+      <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
+      <input type="number" id="bgScaleVal">
     </div>
     <button id="downloadTemplateBtn">Download Template CSV</button>
   </div>
@@ -94,15 +94,14 @@
     function createCard(front, back) {
       const geometry = new THREE.BoxGeometry(1, 1.4, 0.04);
       const materials = [
-        new THREE.MeshBasicMaterial({ color: 0x333333 }), // right
-        new THREE.MeshBasicMaterial({ color: 0x333333 }), // left
-        new THREE.MeshBasicMaterial({ color: 0x333333 }), // top
-        new THREE.MeshBasicMaterial({ color: 0x333333 }), // bottom
-        new THREE.MeshBasicMaterial({ map: front }), // front
-        new THREE.MeshBasicMaterial({ map: back }) // back
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ map: front }),
+        new THREE.MeshBasicMaterial({ map: back })
       ];
-      const mesh = new THREE.Mesh(geometry, materials);
-      return mesh;
+      return new THREE.Mesh(geometry, materials);
     }
 
     function loadDefaultTextures() {
@@ -123,22 +122,37 @@
     camera.position.z = 2.5;
     loadDefaultTextures();
 
-    const sliders = ['adjustX', 'adjustY', 'rotationSpeed'];
-    sliders.forEach(id => {
-      const range = document.getElementById(id);
-      const num = document.getElementById(id + 'Val');
-      range.addEventListener('input', () => num.value = range.value);
-      num.addEventListener('input', () => range.value = num.value);
+    const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
+    controls.forEach(control => {
+      const range = document.getElementById(control);
+      const num = document.getElementById(control + 'Val');
+      const saved = localStorage.getItem(control);
+      if (saved !== null) {
+        range.value = saved;
+        num.value = saved;
+      }
+      range.addEventListener('input', () => {
+        num.value = range.value;
+        localStorage.setItem(control, range.value);
+      });
+      num.addEventListener('input', () => {
+        range.value = num.value;
+        localStorage.setItem(control, num.value);
+      });
     });
 
     function animate() {
       requestAnimationFrame(animate);
       if (cardMesh) {
-        const speed = parseFloat(document.getElementById('rotationSpeed').value);
-        cardMesh.rotation.y += speed;
+        cardMesh.rotation.y += parseFloat(document.getElementById('rotationSpeed').value);
+        cardMesh.rotation.x = parseFloat(document.getElementById('adjustPitch').value);
         cardMesh.position.x = parseFloat(document.getElementById('adjustX').value);
         cardMesh.position.y = parseFloat(document.getElementById('adjustY').value);
+        const s = parseFloat(document.getElementById('scale').value);
+        cardMesh.scale.set(s, s, s);
       }
+      const bgS = parseFloat(document.getElementById('bgScale').value);
+      bgPlane.scale.set(bgS, bgS, 1);
       renderer.render(scene, camera);
     }
     animate();
