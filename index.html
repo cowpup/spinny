@@ -71,13 +71,20 @@
         <input type="range" id="scale" min="0.1" max="2" step="0.01" value="0.9">
         <input type="number" id="scaleVal" value="0.9">
       </div>
+      <div class="slider-container">
+        <label for="bgScale">Background Scale:</label>
+        <input type="range" id="bgScale" min="0.1" max="3" step="0.01" value="1">
+        <input type="number" id="bgScaleVal" value="1">
+      </div>
     </div>
     <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
     <script>
       let frontTexture, backTexture, cardMesh, backgroundPlane;
       let rotationSpeed = 0.0085;
       let scaleValue = 0.9;
+      let bgScaleValue = 1;
       let cardX = 0, cardY = 0.3, pitch = 0;
+      let backgroundAspectRatio = 1;
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
@@ -129,23 +136,6 @@
         scene.add(cardMesh);
       }
 
-      function handleFile(input, callback) {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          const img = new Image();
-          img.onload = function () {
-            const texture = new THREE.Texture(img);
-            texture.needsUpdate = true;
-            texture.colorSpace = THREE.SRGBColorSpace;
-            callback(texture);
-          };
-          img.src = event.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
-
       function setBackground(imageUrl) {
         const loader = new THREE.TextureLoader();
         loader.load(imageUrl, texture => {
@@ -154,13 +144,26 @@
           texture.magFilter = THREE.LinearFilter;
           texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
 
-          const bgGeometry = new THREE.PlaneGeometry(20, 20);
+          const imgW = texture.image.width;
+          const imgH = texture.image.height;
+          backgroundAspectRatio = imgW / imgH;
+
+          const bgHeight = 20;
+          const bgWidth = bgHeight * backgroundAspectRatio;
+
+          const bgGeometry = new THREE.PlaneGeometry(bgWidth, bgHeight);
           const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
           if (backgroundPlane) scene.remove(backgroundPlane);
           backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
           backgroundPlane.position.set(0, 0, -5);
+          updateBgScale(bgScaleValue);
           scene.add(backgroundPlane);
         });
+      }
+
+      function updateBgScale(value) {
+        bgScaleValue = value;
+        if (backgroundPlane) backgroundPlane.scale.set(bgScaleValue * backgroundAspectRatio, bgScaleValue, 1);
       }
 
       document.getElementById('frontInput').addEventListener('change', e => {
@@ -176,6 +179,20 @@
           createCard();
         });
       });
+
+      function handleFile(input, callback) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const loader = new THREE.TextureLoader();
+          loader.load(event.target.result, texture => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            callback(texture);
+          });
+        };
+        reader.readAsDataURL(file);
+      }
 
       document.getElementById('bgInput').addEventListener('change', e => {
         const file = e.target.files[0];
@@ -210,6 +227,7 @@
       bindSlider('adjustPitch', 'adjustPitchVal', v => { pitch = v; if (cardMesh) cardMesh.rotation.x = v; });
       bindSlider('rotationSpeed', 'rotationSpeedVal', v => { rotationSpeed = v; });
       bindSlider('scale', 'scaleVal', v => { scaleValue = v; if (cardMesh) cardMesh.scale.set(v, v, v); });
+      bindSlider('bgScale', 'bgScaleVal', v => updateBgScale(v));
 
       function animate() {
         requestAnimationFrame(animate);
