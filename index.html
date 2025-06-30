@@ -204,12 +204,18 @@ const loader = new THREE.TextureLoader();
 loader.load('front.jpg', texture => {
   texture.colorSpace = THREE.SRGBColorSpace;
   frontTexture = texture;
-  if (backTexture) createCard();
+  if (backTexture) {
+    createCard();
+    animate();
+  }
 });
 loader.load('back.jpg', texture => {
   texture.colorSpace = THREE.SRGBColorSpace;
   backTexture = texture;
-  if (frontTexture) createCard();
+  if (frontTexture) {
+    createCard();
+    animate();
+  }
 });
 
       window.addEventListener('resize', () => {
@@ -250,9 +256,7 @@ loader.load('back.jpg', texture => {
   }, 1000 / 30);
 });
   
-    if (cardMesh) cardMesh.rotation.y += 0.0085;
-  }, 33);
-});
+    
 </script>
 
 
