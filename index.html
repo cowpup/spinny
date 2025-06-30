@@ -287,38 +287,12 @@
             texture => {
               texture.colorSpace = THREE.SRGBColorSpace;
               
-              // Get actual image dimensions
-              const imgWidth = texture.image.width;
-              const imgHeight = texture.image.height;
-              
-              // Calculate the aspect ratio
-              const aspectRatio = imgWidth / imgHeight;
-              
-              // Base size for the background
+              // ALWAYS create a square plane - period.
               const baseSize = 12;
               const scaledSize = baseSize * settings.bgScale;
               
-              let planeWidth, planeHeight;
-              
-              if (aspectRatio === 1) {
-                // Perfect square (1:1 ratio) - use square geometry
-                planeWidth = scaledSize;
-                planeHeight = scaledSize;
-              } else if (aspectRatio > 1) {
-                // Wider than tall - fit to height, crop width
-                planeHeight = scaledSize;
-                planeWidth = scaledSize; // Keep square, crop the sides
-                texture.repeat.set(planeHeight / planeWidth * aspectRatio, 1);
-                texture.offset.set((1 - texture.repeat.x) / 2, 0);
-              } else {
-                // Taller than wide - fit to width, crop height
-                planeWidth = scaledSize;
-                planeHeight = scaledSize; // Keep square, crop top/bottom
-                texture.repeat.set(1, planeWidth / planeHeight / aspectRatio);
-                texture.offset.set(0, (1 - texture.repeat.y) / 2);
-              }
-              
-              const bgGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight);
+              // Square geometry - no aspect ratio calculations
+              const bgGeometry = new THREE.PlaneGeometry(scaledSize, scaledSize);
               const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
               
               if (backgroundPlane) scene.remove(backgroundPlane);
