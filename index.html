@@ -154,15 +154,15 @@ document.getElementById('adjustScale').addEventListener('input', e => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function (event) {
-    const img = new Image();
-    img.onload = function () {
-      const texture = new THREE.Texture(img);
+    const image = new Image();
+    image.onload = function () {
+      const texture = new THREE.Texture(image);
       texture.needsUpdate = true;
       texture.colorSpace = THREE.SRGBColorSpace;
       callback(texture);
       if (frontTexture && backTexture) createCard();
     };
-    img.src = event.target.result;
+    image.src = event.target.result;
   };
   reader.readAsDataURL(file);
       }
