@@ -71,6 +71,11 @@
       <input type="range" id="bgScale" min="0.1" max="3" step="0.01">
       <input type="number" id="bgScaleVal">
     </div>
+    <div class="slider-container">
+      <label for="thickness">Card Thickness:</label>
+      <input type="range" id="thickness" min="0.001" max="0.1" step="0.001">
+      <input type="number" id="thicknessVal">
+    </div>
     <button id="downloadTemplateBtn">Download Template CSV</button>
   </div>
 
@@ -93,7 +98,7 @@
     scene.add(bgPlane);
 
     function createCard(front, back) {
-      const thickness = 0.025; // adjust based on prior correct appearance
+      const thickness = parseFloat(document.getElementById('thickness').value);
       const geometry = new THREE.BoxGeometry(
         front.image.width / 500,
         front.image.height / 500,
@@ -130,7 +135,7 @@
     camera.position.z = 2.5;
     loadDefaultTextures();
 
-    const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
+    const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale", "thickness"];
     controls.forEach(control => {
       const range = document.getElementById(control);
       const num = document.getElementById(control + 'Val');
