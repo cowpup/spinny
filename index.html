@@ -190,6 +190,12 @@
       let isProcessing = false;
       let processedVideos = [];
       
+      // Debug function to log processedVideos state
+      function logVideoState(action) {
+        console.log(`${action} - processedVideos contains:`, processedVideos.map(v => v.filename));
+        console.log(`Total videos: ${processedVideos.length}`);
+      }
+      
       // Settings
       let settings = {
         cardX: 0,
@@ -359,10 +365,14 @@
             const blob = new Blob(chunks, { type: 'video/webm' });
             console.log(`${filename} recorded: ${blob.size} bytes`);
             
+            // Create video object
+            const videoObject = { filename: filename + '.mp4', blob: blob };
+            
             // Add to processedVideos array immediately
-            processedVideos.push({ filename: filename + '.mp4', blob });
-            console.log(`Total videos collected: ${processedVideos.length}`);
-            resolve();
+            processedVideos.push(videoObject);
+            logVideoState(`After adding ${filename}`);
+            
+            resolve(videoObject); // Return the video object
           };
 
           // Start recording
@@ -488,13 +498,16 @@
         if (isProcessing || csvData.length === 0) return;
         
         isProcessing = true;
-        processedVideos = []; // Clear previous videos
+        
+        // Clear processedVideos at the start
+        processedVideos = [];
+        logVideoState('Starting batch process');
         
         document.getElementById('progress').classList.remove('hidden');
         document.getElementById('progressText').classList.remove('hidden');
         document.getElementById('processBtn').textContent = 'Processing...';
         document.getElementById('processBtn').disabled = true;
-        document.getElementById('downloadAllBtn').classList.add('hidden'); // Hide until complete
+        document.getElementById('downloadAllBtn').classList.add('hidden');
 
         console.log(`Starting batch processing of ${csvData.length} rows`);
 
@@ -507,25 +520,39 @@
           
           console.log(`Processing row ${i + 1}: ${rowData.name}`);
           
-          const loaded = await loadRowData(rowData);
-          if (loaded) {
-            document.getElementById('currentItem').textContent = `Exporting: ${rowData.name}`;
-            await exportVideo(rowData.name);
-            console.log(`Completed ${rowData.name}. Total videos so far: ${processedVideos.length}`);
-            
-            // Update status to show progress
-            document.getElementById('currentItem').textContent = `Completed: ${rowData.name} (${processedVideos.length}/${csvData.length})`;
-          } else {
-            console.log(`Failed to load ${rowData.name}`);
+          try {
+            const loaded = await loadRowData(rowData);
+            if (loaded) {
+              document.getElementById('currentItem').textContent = `Exporting: ${rowData.name}`;
+              
+              // Wait for video export to complete
+              const videoResult = await exportVideo(rowData.name);
+              console.log(`Successfully exported ${rowData.name}`);
+              
+              // Update status
+              document.getElementById('currentItem').textContent = 
+                `Completed: ${rowData.name} (${processedVideos.length}/${csvData.length})`;
+              
+              logVideoState(`After processing ${rowData.name}`);
+            } else {
+              console.log(`Failed to load ${rowData.name}`);
+            }
+          } catch (error) {
+            console.error(`Error processing ${rowData.name}:`, error);
           }
+          
+          // Small delay between exports to ensure proper completion
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         isProcessing = false;
         document.getElementById('processBtn').textContent = 'Process All Rows';
         document.getElementById('processBtn').disabled = false;
-        document.getElementById('currentItem').textContent = `All completed! ${processedVideos.length} videos ready for download`;
+        document.getElementById('currentItem').textContent = 
+          `All completed! ${processedVideos.length} videos ready for download`;
         document.getElementById('downloadAllBtn').classList.remove('hidden');
         
+        logVideoState('Final batch complete');
         console.log(`Batch processing complete. Final video count: ${processedVideos.length}`);
       });
 
