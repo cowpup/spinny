@@ -92,16 +92,19 @@
     scene.add(bgPlane);
 
     function createCard(front, back) {
-      const geometry = new THREE.BoxGeometry(1, 1.4, 0.04);
-      const materials = [
-        new THREE.MeshBasicMaterial({ color: 0x333333 }),
-        new THREE.MeshBasicMaterial({ color: 0x333333 }),
-        new THREE.MeshBasicMaterial({ color: 0x333333 }),
-        new THREE.MeshBasicMaterial({ color: 0x333333 }),
-        new THREE.MeshBasicMaterial({ map: front }),
-        new THREE.MeshBasicMaterial({ map: back })
-      ];
-      return new THREE.Mesh(geometry, materials);
+      const cardGroup = new THREE.Group();
+
+      const frontGeo = new THREE.PlaneGeometry(front.image.width / 500, front.image.height / 500);
+      const frontMat = new THREE.MeshBasicMaterial({ map: front, side: THREE.FrontSide });
+      const frontMesh = new THREE.Mesh(frontGeo, frontMat);
+
+      const backGeo = new THREE.PlaneGeometry(back.image.width / 500, back.image.height / 500);
+      const backMat = new THREE.MeshBasicMaterial({ map: back, side: THREE.BackSide });
+      const backMesh = new THREE.Mesh(backGeo, backMat);
+
+      cardGroup.add(frontMesh);
+      cardGroup.add(backMesh);
+      return cardGroup;
     }
 
     function loadDefaultTextures() {
