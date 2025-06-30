@@ -99,138 +99,42 @@
   <div id="progressBar"><div id="progressBarFill"></div></div>
   <button id="exportBtn" style="position:absolute; top:10px; right:10px; z-index:10;">Export MP4</button>
   <button id="batchExportBtn" style="position:absolute; top:40px; right:10px; z-index:10;">Batch Export CSV</button>
+  <button id="downloadTemplateBtn" style="position:absolute; top:70px; right:10px; z-index:10;">Download Template CSV</button>
 
   <script>
-    let rotationSpeed = parseFloat(localStorage.getItem('rotationSpeed') || 0.0085);
-    let scale = parseFloat(localStorage.getItem('scale') || 0.9);
-    let bgScale = parseFloat(localStorage.getItem('bgScale') || 1);
-    let adjustX = parseFloat(localStorage.getItem('adjustX') || 0);
-    let adjustY = parseFloat(localStorage.getItem('adjustY') || 0.3);
-    let adjustPitch = parseFloat(localStorage.getItem('adjustPitch') || 0);
-
-    document.getElementById('adjustX').value = adjustX;
-    document.getElementById('adjustXVal').value = adjustX;
-    document.getElementById('adjustY').value = adjustY;
-    document.getElementById('adjustYVal').value = adjustY;
-    document.getElementById('adjustPitch').value = adjustPitch;
-    document.getElementById('adjustPitchVal').value = adjustPitch;
-    document.getElementById('rotationSpeed').value = rotationSpeed;
-    document.getElementById('rotationSpeedVal').value = rotationSpeed;
-    document.getElementById('scale').value = scale;
-    document.getElementById('scaleVal').value = scale;
-    document.getElementById('bgScale').value = bgScale;
-    document.getElementById('bgScaleVal').value = bgScale;
-
-    const controls = ["adjustX", "adjustY", "adjustPitch", "rotationSpeed", "scale", "bgScale"];
-    controls.forEach(control => {
-      const range = document.getElementById(control);
-      const num = document.getElementById(control + 'Val');
-      range.addEventListener('input', () => {
-        num.value = range.value;
-        localStorage.setItem(control, range.value);
-      });
-      num.addEventListener('input', () => {
-        range.value = num.value;
-        localStorage.setItem(control, num.value);
-      });
+    document.getElementById('downloadTemplateBtn').addEventListener('click', () => {
+      const csvContent = 'front,back,background\nhttps://example.com/card-front.png,https://example.com/card-back.png,https://example.com/bg.png';
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.setAttribute('href', URL.createObjectURL(blob));
+      link.setAttribute('download', 'template.csv');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
 
-    document.getElementById('batchExportBtn').addEventListener('click', async () => {
-      const fileInput = document.getElementById('csvInput');
-      if (!fileInput.files.length) return alert("Please upload a CSV first.");
+    window.addEventListener('DOMContentLoaded', () => {
+      const frontInput = document.getElementById('frontInput');
+      const backInput = document.getElementById('backInput');
+      const bgInput = document.getElementById('bgInput');
 
-      const file = fileInput.files[0];
-      Papa.parse(file, {
-        header: true,
-        download: false,
-        skipEmptyLines: true,
-        complete: async function(results) {
-          const rows = results.data;
-          const zip = new JSZip();
-          const canvas = document.createElement('canvas');
-          canvas.width = 512;
-          canvas.height = 512;
-          const stream = canvas.captureStream(30);
-          const ctx = canvas.getContext('2d');
+      function setDefaultImage(inputElement, path) {
+        fetch(path)
+          .then(res => res.blob())
+          .then(blob => {
+            const file = new File([blob], path, { type: blob.type });
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            inputElement.files = dataTransfer.files;
+            inputElement.dispatchEvent(new Event('change'));
+          });
+      }
 
-          for (let i = 0; i < rows.length; i++) {
-            const { front, back, background } = rows[i];
-            try {
-              const [frontImg, backImg, bgImg] = await Promise.all([
-                loadImage(front),
-                loadImage(back),
-                loadImage(background)
-              ]);
-
-              let angle = 0;
-              const frames = [];
-              const totalFrames = Math.round((2 * Math.PI) / rotationSpeed);
-              for (let f = 0; f < totalFrames; f++) {
-                angle += rotationSpeed;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(bgImg, 0, 0, 512, 512);
-                const image = angle % (2 * Math.PI) < Math.PI ? frontImg : backImg;
-                ctx.save();
-                ctx.translate(256, 256);
-                ctx.rotate(angle);
-                ctx.drawImage(image, -128, -128, 256, 256);
-                ctx.restore();
-                frames.push(canvas.toDataURL('image/webp'));
-              }
-
-              const video = await createWebM(frames, 30);
-              zip.file(`card_${i + 1}.webm`, video);
-            } catch (e) {
-              console.error("Error processing row", rows[i], e);
-            }
-          }
-
-          const content = await zip.generateAsync({ type: "blob" });
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(content);
-          a.download = 'cards_export.zip';
-          a.click();
-        }
-      });
+      setDefaultImage(frontInput, 'front.png');
+      setDefaultImage(backInput, 'back.png');
+      setDefaultImage(bgInput, 'dripslabbackground.png');
     });
-
-    function loadImage(src) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-      });
-    }
-
-    function createWebM(frames, fps) {
-      return new Promise(resolve => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        const stream = canvas.captureStream(fps);
-        const recorder = new MediaRecorder(stream);
-        const chunks = [];
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
-        recorder.start();
-        let i = 0;
-        const drawNext = () => {
-          if (i >= frames.length) return recorder.stop();
-          const img = new Image();
-          img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-            i++;
-            setTimeout(drawNext, 1000 / fps);
-          };
-          img.src = frames[i];
-        };
-        drawNext();
-      });
-    }
   </script>
 </body>
 </html>
