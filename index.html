@@ -84,6 +84,7 @@
 
     let frontTexture, backTexture, cardMesh;
     const loader = new THREE.TextureLoader();
+
     const bgPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 10),
       new THREE.MeshBasicMaterial({ map: loader.load('dripslabbackground.png') })
@@ -92,19 +93,23 @@
     scene.add(bgPlane);
 
     function createCard(front, back) {
-      const cardGroup = new THREE.Group();
+      const thickness = 0.025; // adjust based on prior correct appearance
+      const geometry = new THREE.BoxGeometry(
+        front.image.width / 500,
+        front.image.height / 500,
+        thickness
+      );
 
-      const frontGeo = new THREE.PlaneGeometry(front.image.width / 500, front.image.height / 500);
-      const frontMat = new THREE.MeshBasicMaterial({ map: front, side: THREE.FrontSide });
-      const frontMesh = new THREE.Mesh(frontGeo, frontMat);
+      const materials = [
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ color: 0x333333 }),
+        new THREE.MeshBasicMaterial({ map: front }),
+        new THREE.MeshBasicMaterial({ map: back })
+      ];
 
-      const backGeo = new THREE.PlaneGeometry(back.image.width / 500, back.image.height / 500);
-      const backMat = new THREE.MeshBasicMaterial({ map: back, side: THREE.BackSide });
-      const backMesh = new THREE.Mesh(backGeo, backMat);
-
-      cardGroup.add(frontMesh);
-      cardGroup.add(backMesh);
-      return cardGroup;
+      return new THREE.Mesh(geometry, materials);
     }
 
     function loadDefaultTextures() {
