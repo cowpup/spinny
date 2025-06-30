@@ -150,19 +150,21 @@ document.getElementById('adjustScale').addEventListener('input', e => {
       }
 
       function handleFile(input, callback) {
-        const file = input.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function (event) {
-          const loader = new THREE.TextureLoader();
-          loader.load(event.target.result, texture => {
-            texture.colorSpace = THREE.SRGBColorSpace;
-            callback(texture);
-            if (frontTexture && backTexture) createCard();
-          });
-        };
-        reader.readAsDataURL(file);
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    const img = new Image();
+    img.onload = function () {
+      const texture = new THREE.Texture(img);
+      texture.needsUpdate = true;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      callback(texture);
+      if (frontTexture && backTexture) createCard();
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
       }
 
       document.getElementById('frontInput').addEventListener('change', e => {
