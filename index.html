@@ -146,7 +146,7 @@
   loader.load(imageUrl, texture => {
     texture.colorSpace = THREE.SRGBColorSpace;
 
-    const bgGeometry = new THREE.PlaneGeometry(20, 20);
+    const bgGeometry = new THREE.PlaneGeometry(30, 20); // wider background
     const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
     if (backgroundPlane) scene.remove(backgroundPlane);
     backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
@@ -154,14 +154,20 @@
     scene.add(backgroundPlane);
   });
 }
-        });
-      });
-      document.getElementById('backInput').addEventListener('change', e => {
-        handleFile(e.target, texture => {
-          backTexture = texture;
-          createCard();
-        });
-      });
+
+document.getElementById('frontInput').addEventListener('change', e => {
+  handleFile(e.target, texture => {
+    frontTexture = texture;
+    createCard();
+  });
+});
+
+document.getElementById('backInput').addEventListener('change', e => {
+  handleFile(e.target, texture => {
+    backTexture = texture;
+    createCard();
+  });
+});
       document.getElementById('bgInput').addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
