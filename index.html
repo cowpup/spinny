@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <title>Spinning Pokémon Card</title>
     <style>
-      body {
+      html, body {
         margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
         overflow: hidden;
         display: flex;
         flex-direction: column;
         align-items: center;
+        background-color: black;
       }
       canvas {
         display: block;
@@ -76,9 +80,10 @@
       let cardX = 0, cardY = 0.3, pitch = 0;
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      const canvasSize = Math.min(window.innerWidth, window.innerHeight);
+      renderer.setSize(canvasSize, canvasSize);
       renderer.setClearColor(0x000000, 0);
       renderer.shadowMap.enabled = true;
       document.body.appendChild(renderer.domElement);
@@ -142,35 +147,36 @@
       }
 
       function setBackground(imageUrl) {
-  const loader = new THREE.TextureLoader();
-  loader.load(imageUrl, texture => {
-    texture.colorSpace = THREE.SRGBColorSpace;
+        const loader = new THREE.TextureLoader();
+        loader.load(imageUrl, texture => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.wrapS = texture.wrapT = THREE.ClampToEdgeWrapping;
 
-    const aspectRatio = texture.image.width / texture.image.height;
-    const planeHeight = 12;
-    const planeWidth = planeHeight * aspectRatio;
-    const bgGeometry = new THREE.PlaneGeometry(planeWidth, planeHeight); // wider background
-    const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
-    if (backgroundPlane) scene.remove(backgroundPlane);
-    backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
-    backgroundPlane.position.set(0, 0, -5);
-    scene.add(backgroundPlane);
-  });
-}
+          const bgGeometry = new THREE.PlaneGeometry(20, 20);
+          const bgMaterial = new THREE.MeshBasicMaterial({ map: texture });
+          if (backgroundPlane) scene.remove(backgroundPlane);
+          backgroundPlane = new THREE.Mesh(bgGeometry, bgMaterial);
+          backgroundPlane.position.set(0, 0, -5);
+          scene.add(backgroundPlane);
+        });
+      }
 
-document.getElementById('frontInput').addEventListener('change', e => {
-  handleFile(e.target, texture => {
-    frontTexture = texture;
-    createCard();
-  });
-});
+      document.getElementById('frontInput').addEventListener('change', e => {
+        handleFile(e.target, texture => {
+          frontTexture = texture;
+          createCard();
+        });
+      });
 
-document.getElementById('backInput').addEventListener('change', e => {
-  handleFile(e.target, texture => {
-    backTexture = texture;
-    createCard();
-  });
-});
+      document.getElementById('backInput').addEventListener('change', e => {
+        handleFile(e.target, texture => {
+          backTexture = texture;
+          createCard();
+        });
+      });
+
       document.getElementById('bgInput').addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -180,6 +186,7 @@ document.getElementById('backInput').addEventListener('change', e => {
         };
         reader.readAsDataURL(file);
       });
+
       document.getElementById('submitBtn').addEventListener('click', () => {
         document.getElementById('upload-container').style.display = 'none';
         document.getElementById('exportBtn').style.display = 'block';
@@ -225,9 +232,10 @@ document.getElementById('backInput').addEventListener('change', e => {
       });
 
       window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        const canvasSize = Math.min(window.innerWidth, window.innerHeight);
+        camera.aspect = 1;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(canvasSize, canvasSize);
       });
 
       document.getElementById('exportBtn').addEventListener('click', () => {
