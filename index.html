@@ -23,6 +23,15 @@
         padding: 10px;
         border-radius: 8px;
       }
+      .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin: 5px 0;
+      }
+      .slider-container input[type=number] {
+        width: 50px;
+      }
     </style>
     <script src="https://unpkg.com/three@0.148.0/build/three.min.js"></script>
   </head>
@@ -32,34 +41,32 @@
       <label>Back Image: <input type="file" id="backInput" accept="image/*"></label><br>
       <label>Background Image: <input type="file" id="bgInput" accept="image/*"></label><br>
       <button id="submitBtn">Submit</button><br>
-      <label>Adjust Horizontal (X): <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0" list="tickmarksX"></label><br>
-      <datalist id="tickmarksX">
-        <option value="-5" label="-5"></option>
-        <option value="-2.5"></option>
-        <option value="0" label="0"></option>
-        <option value="2.5"></option>
-        <option value="5" label="+5"></option>
-      </datalist>
-      <label>Adjust Vertical (Y): <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3" list="tickmarksY"></label><br>
-      <datalist id="tickmarksY">
-        <option value="-5" label="-5"></option>
-        <option value="-2.5"></option>
-        <option value="0" label="0"></option>
-        <option value="2.5"></option>
-        <option value="5" label="+5"></option>
-      </datalist><br>
-      <label>Adjust Pitch (Z): <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0" list="tickmarksPitch"></label><br>
-      <datalist id="tickmarksPitch">
-        <option value="-1.5" label="-1.5"></option>
-        <option value="-0.75"></option>
-        <option value="0" label="0"></option>
-        <option value="0.75"></option>
-        <option value="1.5" label="+1.5"></option>
-      </datalist>
+
+      <div class="slider-container">
+        <label for="adjustX">Adjust Horizontal (X):</label>
+        <input type="range" id="adjustX" min="-5" max="5" step="0.1" value="0">
+        <input type="number" id="adjustXVal" value="0">
+      </div>
+      <div class="slider-container">
+        <label for="adjustY">Adjust Vertical (Y):</label>
+        <input type="range" id="adjustY" min="-5" max="5" step="0.1" value="0.3">
+        <input type="number" id="adjustYVal" value="0.3">
+      </div>
+      <div class="slider-container">
+        <label for="adjustPitch">Adjust Pitch (Z):</label>
+        <input type="range" id="adjustPitch" min="-1.5" max="1.5" step="0.05" value="0">
+        <input type="number" id="adjustPitchVal" value="0">
+      </div>
+      <div class="slider-container">
+        <label for="rotationSpeed">Rotate Speed:</label>
+        <input type="range" id="rotationSpeed" min="-0.1" max="0.1" step="0.001" value="0.0085">
+        <input type="number" id="rotationSpeedVal" value="0.0085">
+      </div>
     </div>
     <button id="exportBtn" style="display:none; position:absolute; top:10px; right:10px; z-index:10;">Export GIF</button>
     <script>
       let frontTexture, backTexture, cardMesh;
+      let rotationSpeed = 0.0085;
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -105,7 +112,7 @@
         cardMesh.scale.set(0.9, 0.9, 0.9);
         cardMesh.castShadow = true;
         cardMesh.receiveShadow = false;
-        cardMesh.position.y = 0.3;
+        cardMesh.position.y = parseFloat(document.getElementById('adjustY').value);
         scene.add(cardMesh);
       }
 
@@ -159,19 +166,28 @@
         document.getElementById('upload-container').style.display = 'none';
         document.getElementById('exportBtn').style.display = 'block';
       });
-      document.getElementById('adjustX').addEventListener('input', e => {
-        if (cardMesh) cardMesh.position.x = parseFloat(e.target.value);
-      });
-      document.getElementById('adjustY').addEventListener('input', e => {
-        if (cardMesh) cardMesh.position.y = parseFloat(e.target.value);
-      });
-      document.getElementById('adjustPitch').addEventListener('input', e => {
-        if (cardMesh) cardMesh.rotation.x = parseFloat(e.target.value);
-      });
+
+      function bindSlider(id, numId, callback) {
+        const slider = document.getElementById(id);
+        const number = document.getElementById(numId);
+        slider.addEventListener('input', () => {
+          number.value = slider.value;
+          callback(parseFloat(slider.value));
+        });
+        number.addEventListener('input', () => {
+          slider.value = number.value;
+          callback(parseFloat(number.value));
+        });
+      }
+
+      bindSlider('adjustX', 'adjustXVal', v => { if (cardMesh) cardMesh.position.x = v; });
+      bindSlider('adjustY', 'adjustYVal', v => { if (cardMesh) cardMesh.position.y = v; });
+      bindSlider('adjustPitch', 'adjustPitchVal', v => { if (cardMesh) cardMesh.rotation.x = v; });
+      bindSlider('rotationSpeed', 'rotationSpeedVal', v => { rotationSpeed = v; });
 
       function animate() {
         requestAnimationFrame(animate);
-        if (cardMesh) cardMesh.rotation.y += 0.0085;
+        if (cardMesh) cardMesh.rotation.y += rotationSpeed;
         renderer.render(scene, camera);
       }
       animate();
@@ -213,12 +229,12 @@
 
         recorder.start();
 
-        const totalFrames = Math.round((Math.PI * 2) / 0.0085);
+        const totalFrames = Math.round((Math.PI * 2) / rotationSpeed);
         let framesCaptured = 0;
 
         const captureInterval = setInterval(() => {
           if (!cardMesh) return;
-          cardMesh.rotation.y += 0.0085;
+          cardMesh.rotation.y += rotationSpeed;
           renderer.render(scene, camera);
           framesCaptured++;
           if (framesCaptured >= totalFrames) {
