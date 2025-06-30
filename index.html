@@ -332,55 +332,56 @@
 
       function exportVideo(filename) {
         return new Promise((resolve) => {
-          // Calculate frames needed for exact rotations
+          // Use the actual rotation speed from settings
           const totalFrames = Math.round((settings.rotations * Math.PI * 2) / Math.abs(settings.rotationSpeed));
-          const rotationPerFrame = settings.rotationSpeed; // Use actual rotation speed per frame
 
-          // Create canvas for recording
+          // Create canvas for recording - use the main canvas directly
           const canvas = renderer.domElement;
-          const tempCanvas = document.createElement('canvas');
-          tempCanvas.width = canvas.width;
-          tempCanvas.height = canvas.height;
-          const tempContext = tempCanvas.getContext('2d');
-
-          // Use MediaRecorder with WebM
-          const stream = tempCanvas.captureStream(settings.fps);
+          const stream = canvas.captureStream(settings.fps);
           const recorder = new MediaRecorder(stream, { 
             mimeType: 'video/webm;codecs=vp8',
-            videoBitsPerSecond: 8000000 // 8 Mbps for good quality
+            videoBitsPerSecond: 8000000
           });
           const chunks = [];
 
-          recorder.ondataavailable = e => chunks.push(e.data);
+          recorder.ondataavailable = e => {
+            if (e.data.size > 0) {
+              chunks.push(e.data);
+            }
+          };
+          
           recorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
+            console.log(`Video blob size for ${filename}: ${blob.size} bytes`);
             processedVideos.push({ filename: filename + '.mp4', blob });
             resolve();
           };
 
+          // Start recording
           recorder.start();
 
           let framesCaptured = 0;
-          // Reset card rotation for consistent starting point
-          if (cardMesh) cardMesh.rotation.y = 0;
+          const startRotation = cardMesh ? cardMesh.rotation.y : 0;
 
           const captureInterval = setInterval(() => {
-            if (!cardMesh) return;
+            if (!cardMesh) {
+              clearInterval(captureInterval);
+              recorder.stop();
+              return;
+            }
             
-            // Rotate card using the actual rotation speed
-            cardMesh.rotation.y += rotationPerFrame;
+            // Use the exact rotation speed from settings
+            cardMesh.rotation.y = startRotation + (framesCaptured * settings.rotationSpeed);
             
-            // Render to main canvas
+            // Render frame
             renderer.render(scene, camera);
-            
-            // Copy to recording canvas
-            tempContext.drawImage(canvas, 0, 0);
             
             framesCaptured++;
             
+            // Stop when we've captured enough frames for the desired rotations
             if (framesCaptured >= totalFrames) {
               clearInterval(captureInterval);
-              recorder.stop();
+              setTimeout(() => recorder.stop(), 100); // Small delay to ensure last frame
             }
           }, 1000 / settings.fps);
         });
@@ -507,21 +508,46 @@
 
       // Download all videos as ZIP
       document.getElementById('downloadAllBtn').addEventListener('click', async () => {
+        if (processedVideos.length === 0) {
+          alert('No videos to download!');
+          return;
+        }
+
+        console.log(`Creating ZIP with ${processedVideos.length} videos`);
         const zip = new JSZip();
         
         // Add each video to the ZIP
-        processedVideos.forEach(video => {
+        for (let i = 0; i < processedVideos.length; i++) {
+          const video = processedVideos[i];
+          console.log(`Adding ${video.filename} to ZIP (${video.blob.size} bytes)`);
           zip.file(video.filename, video.blob);
-        });
+        }
         
-        // Generate ZIP file
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'card_animations.zip';
-        a.click();
-        URL.revokeObjectURL(url);
+        try {
+          // Generate ZIP file
+          document.getElementById('currentItem').textContent = 'Creating ZIP file...';
+          const zipBlob = await zip.generateAsync({ 
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: 6 }
+          });
+          
+          console.log(`ZIP file created: ${zipBlob.size} bytes`);
+          
+          const url = URL.createObjectURL(zipBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'card_animations.zip';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          document.getElementById('currentItem').textContent = `ZIP downloaded: ${processedVideos.length} videos`;
+        } catch (error) {
+          console.error('Error creating ZIP:', error);
+          document.getElementById('currentItem').textContent = 'Error creating ZIP file';
+        }
       });
 
       // Remove the old createZipFile function since we're using JSZip now
